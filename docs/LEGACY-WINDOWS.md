@@ -99,39 +99,57 @@ log.Info("ApiMock started", "url", url, "version", server.Version)
 
 ## 构建兼容包
 
-```bash
-# 需要 Go 1.20（本机位于 D:\go120）
-export PATH="D:/go120/go/bin:$PATH"
-export GOTOOLCHAIN=local    # 不可省略
-
-go build -trimpath \
-  -ldflags "-s -w -X apimock/internal/server.Version=0.1.0" \
-  -o apimock.exe ./cmd/apimock
-```
-
-`GOTOOLCHAIN=local` 必须设置：否则新版 go 命令读到 `go 1.20` 指令后会自动
-下载更新的工具链，等于白降级。
-
-**验证 PE 头**（应为 6.1，而非 10.0）：
+分支内提供了专用脚本，它会**校验工具链版本**并在构建后**校验 PE 头**，
+避免“编译成功但目标机器跑不了”的静默失败：
 
 ```powershell
-$b = [IO.File]::ReadAllBytes("apimock.exe")
-$pe = [BitConverter]::ToInt32($b, 0x3C); $opt = $pe + 24
-"min OS: $([BitConverter]::ToUInt16($b,$opt+40)).$([BitConverter]::ToUInt16($b,$opt+42))"
+.\scripts\build-legacy.ps1 -GoRoot D:\go120\go -Version 0.1.0
+.\scripts\build-legacy.ps1 -SkipWeb              # 复用已有 web/dist
 ```
+
+```sh
+./scripts/build-legacy.sh 0.1.0
+GOROOT_120=/usr/local/go1.20 ./scripts/build-legacy.sh --skip-web
+```
+
+用错工具链时脚本会直接拒绝并说明原因，而不是产出坏二进制。
+
+### 依赖锁定校验
+
+本分支有四个依赖必须固定在仍兼容 Go 1.20 的版本上。`go mod tidy` 或
+`go get` 会把它们拉到需要 Go 1.23+ 的版本，届时分支静默失去构建能力。
+
+```powershell
+.\scripts\check-legacy-pins.ps1
+```
+
+输出每项的期望值/实际值，漂移时退出码为 1 并给出修复命令。
+
+**建议在每次改动依赖后、以及合并主分支之后运行它。**
 
 ## 已验证 / 未验证
 
 | 项 | 状态 |
 | -- | ---- |
+| 兼容构建脚本拦截错误工具链 | ✅ 实测（Go 1.24 被拒绝） |
+| 兼容构建脚本产出 PE 6.1 | ✅ 实测 |
+| 依赖锁定校验能发现漂移 | ✅ 实测（故意改版本后 exit 1） |
 | Go 1.20 下 `go build` | ✅ |
 | Go 1.20 下 `go test ./...` | ✅ 41 个测试全绿 |
-| PE 头声明 6.1 | ✅ |
 | 本机（Win10）启动、健康检查、嵌入前端、预置数据 | ✅ |
 | **Windows Server 2012 R2 实机运行** | ✅ **2026-10-20 确认** |
 | Windows Server 2008 R2 实机运行 | ❌ 未直接验证（同工具链范围，预期可用） |
 
-## 维护策略
+## 长期保留与维护意图
+
+本分支是**长期保留**的，目的是保留在旧版 Windows 上运行的可能。为此做了
+三件事，使其在半年后仍可重建：
+
+1. **工具链可重现** —— 构建脚本强制 Go 1.20，并说明从哪里获取。
+2. **依赖版本可检测** —— 校验脚本能发现漂移，且给出精确修复命令。
+3. **构建产物可验证** —— 脚本检查 PE 最低系统版本，而非只看退出码。
+
+维护约定：
 
 - **主分支保持最新**，不为兼容性让步。
 - **兼容分支只接受最小改动**，不合并主分支的新功能，除非确有必要。
@@ -140,6 +158,12 @@ $pe = [BitConverter]::ToInt32($b, 0x3C); $opt = $pe + 24
 
 若主分支将来引入新的 Go 1.21+ 特性，兼容分支会编译失败 —— 这是**预期**
 信号：该改动要么在兼容分支中绕开，要么明确放弃对旧系统的支持。
+
+### 关于分支名
+
+分支名为 `legacy/win2008r2`（按最初需求命名），实际适用范围更广，包含
+2012 R2。**不要重命名**：改名会打断已有的推送历史和本地跟踪关系，
+收益不抵成本。适用范围以上方表格为准。
 
 ## 风险提示
 
