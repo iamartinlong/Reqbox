@@ -1,0 +1,247 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/archivo";
+@import "@fontsource-variable/jetbrains-mono";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+  ApiMock — a workbench for HTTP.
+  The chrome is deliberately achromatic so that the one colour system that
+  carries meaning, the HTTP method ramp, is the only saturated thing on screen.
+*/
+
+:root {
+  --radius: 0.5rem;
+
+  /* light: blueprint paper, cool and low-chroma */
+  --background: oklch(0.985 0.003 240);
+  --foreground: oklch(0.22 0.012 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.012 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.012 250);
+  --primary: oklch(0.28 0.014 250);
+  --primary-foreground: oklch(0.985 0.003 240);
+  --secondary: oklch(0.955 0.005 240);
+  --secondary-foreground: oklch(0.3 0.012 250);
+  --muted: oklch(0.955 0.005 240);
+  --muted-foreground: oklch(0.53 0.012 250);
+  --accent: oklch(0.945 0.008 240);
+  --accent-foreground: oklch(0.24 0.012 250);
+  --destructive: oklch(0.58 0.19 25);
+  --border: oklch(0.9 0.006 240);
+  --input: oklch(0.88 0.006 240);
+  --ring: oklch(0.55 0.11 250);
+
+  --panel: oklch(0.97 0.004 240);
+  --rail: oklch(0.955 0.005 240);
+  --chrome: oklch(0.985 0.003 240);
+  --hairline: oklch(0.9 0.006 240);
+
+  /* HTTP method ramp — meaning, not decoration */
+  --m-get: oklch(0.55 0.11 165);
+  --m-post: oklch(0.6 0.12 70);
+  --m-put: oklch(0.55 0.12 250);
+  --m-patch: oklch(0.56 0.13 305);
+  --m-delete: oklch(0.56 0.16 25);
+  --m-other: oklch(0.55 0.012 250);
+
+  --ok: oklch(0.55 0.11 165);
+  --warn: oklch(0.62 0.13 70);
+  --bad: oklch(0.56 0.17 25);
+}
+
+.dark {
+  --background: oklch(0.165 0.008 250);
+  --foreground: oklch(0.93 0.004 240);
+  --card: oklch(0.2 0.009 250);
+  --card-foreground: oklch(0.93 0.004 240);
+  --popover: oklch(0.215 0.009 250);
+  --popover-foreground: oklch(0.93 0.004 240);
+  --primary: oklch(0.92 0.005 240);
+  --primary-foreground: oklch(0.19 0.009 250);
+  --secondary: oklch(0.25 0.009 250);
+  --secondary-foreground: oklch(0.9 0.004 240);
+  --muted: oklch(0.245 0.009 250);
+  --muted-foreground: oklch(0.66 0.012 245);
+  --accent: oklch(0.27 0.01 250);
+  --accent-foreground: oklch(0.95 0.004 240);
+  --destructive: oklch(0.66 0.17 25);
+  --border: oklch(0.29 0.009 250);
+  --input: oklch(0.33 0.009 250);
+  --ring: oklch(0.72 0.03 250);
+
+  --panel: oklch(0.185 0.008 250);
+  --rail: oklch(0.155 0.008 250);
+  --chrome: oklch(0.175 0.008 250);
+  --hairline: oklch(0.27 0.009 250);
+
+  --m-get: oklch(0.78 0.13 165);
+  --m-post: oklch(0.8 0.12 75);
+  --m-put: oklch(0.74 0.12 250);
+  --m-patch: oklch(0.75 0.13 305);
+  --m-delete: oklch(0.72 0.15 25);
+  --m-other: oklch(0.7 0.012 250);
+
+  --ok: oklch(0.78 0.13 165);
+  --warn: oklch(0.82 0.13 75);
+  --bad: oklch(0.7 0.16 25);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-panel: var(--panel);
+  --color-rail: var(--rail);
+  --color-chrome: var(--chrome);
+  --color-hairline: var(--hairline);
+
+  --color-m-get: var(--m-get);
+  --color-m-post: var(--m-post);
+  --color-m-put: var(--m-put);
+  --color-m-patch: var(--m-patch);
+  --color-m-delete: var(--m-delete);
+  --color-m-other: var(--m-other);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01" 1;
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--ring) 35%, transparent);
+  }
+
+  /* thin, unobtrusive scrollbars in every scroll container */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+    background-clip: content-box;
+  }
+
+  :focus-visible {
+    outline: 2px solid color-mix(in oklch, var(--ring) 70%, transparent);
+    outline-offset: 1px;
+  }
+}
+
+@layer utilities {
+  /* Eyebrow labels: the small uppercase captions that structure the UI. */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  .mono {
+    font-family: var(--font-mono);
+    font-variant-ligatures: none;
+  }
+
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hairline-b {
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .hairline-t {
+    border-top: 1px solid var(--hairline);
+  }
+}
+
+/* CodeMirror is restyled to match the workbench, not the other way round. */
+.cm-editor {
+  background: transparent !important;
+  font-family: var(--font-mono) !important;
+  font-size: 12.5px;
+}
+
+.cm-editor.cm-focused {
+  outline: none !important;
+}
+
+.cm-gutters {
+  background: transparent !important;
+  border-right: 1px solid var(--hairline) !important;
+  color: var(--muted-foreground) !important;
+}
+
+.cm-activeLineGutter,
+.cm-activeLine {
+  background: color-mix(in oklch, var(--accent) 60%, transparent) !important;
+}
+
+.cm-scroller {
+  line-height: 1.65 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

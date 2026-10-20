@@ -1,0 +1,17 @@
+# build output
+/dist/
+/apimock
+/apimock.exe
+
+# local database and runtime data
+/data/
+*.db
+*.db-shm
+*.db-wal
+
+# editor / OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.local
