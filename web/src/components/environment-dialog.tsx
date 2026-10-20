@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { useConfirm } from '@/components/confirm-dialog'
 import { api } from '@/lib/api'
 import { useWorkspace } from '@/lib/store'
 import type { EnvVar, Environment } from '@/lib/types'
@@ -35,6 +36,7 @@ export function EnvironmentDialog({ open, onOpenChange }: Props) {
   const [name, setName] = useState('')
   const [vars, setVars] = useState<EnvVar[]>([])
   const [saving, setSaving] = useState(false)
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   const current: Environment | undefined = environments.find((e) => e.id === selected)
 
@@ -97,7 +99,17 @@ export function EnvironmentDialog({ open, onOpenChange }: Props) {
 
   const remove = async () => {
     if (!current) return
-    if (!window.confirm(`Delete "${current.name}"?`)) return
+    if (
+      !(await confirm({
+        title: `Delete "${current.name}"?`,
+        description:
+          current.id === activeEnvId
+            ? 'This is the active environment. Requests will fall back to no environment.'
+            : 'Its variables are removed with it.',
+        confirmLabel: 'Delete environment',
+      }))
+    )
+      return
     await api.deleteEnvironment(current.id)
     setSelected(null)
     await reload(current.id === activeEnvId ? '' : undefined)
@@ -250,6 +262,8 @@ export function EnvironmentDialog({ open, onOpenChange }: Props) {
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {confirmDialog}
     </Dialog>
   )
 }

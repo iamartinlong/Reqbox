@@ -10,6 +10,7 @@ import { RequestPanel } from '@/components/request-panel'
 import { ResponsePanel } from '@/components/response-panel'
 import { EnvironmentDialog } from '@/components/environment-dialog'
 import { CurlDialog } from '@/components/curl-dialog'
+import { useConfirm } from '@/components/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { RunSettingsDialog } from '@/components/run-settings-dialog'
 import type { RunResponse } from '@/lib/types'
@@ -36,6 +37,7 @@ export function Workspace() {
   const [curlOpen, setCurlOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const responseRef = useRef<HTMLDivElement>(null)
   const responseOwner = useRef<string>('')
 
@@ -239,7 +241,14 @@ export function Workspace() {
                   variant="ghost"
                   size="xs"
                   onClick={async () => {
-                    if (!window.confirm('Delete this request?')) return
+                    if (
+                      !(await confirm({
+                        title: `Delete "${draft.name}"?`,
+                        description: 'Past runs of this request stay in History.',
+                        confirmLabel: 'Delete request',
+                      }))
+                    )
+                      return
                     await api.deleteRequest(draft.id)
                     const list = await reload()
                     startDraft()
@@ -276,6 +285,7 @@ export function Workspace() {
       <EnvironmentDialog open={envOpen} onOpenChange={setEnvOpen} />
       <CurlDialog open={curlOpen} onOpenChange={setCurlOpen} />
       <RunSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      {confirmDialog}
     </div>
   )
 }

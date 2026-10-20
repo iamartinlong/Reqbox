@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PromptDialog } from '@/components/prompt-dialog'
+import { useConfirm } from '@/components/confirm-dialog'
 import { api } from '@/lib/api'
 import { methodTint, pathOf, slugify, timeAgo } from '@/lib/format'
 import { useWorkspace } from '@/lib/store'
@@ -66,6 +67,7 @@ export function Sidebar({ onOpenEnvironments, onOpenSettings, onNavigate }: Prop
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [reloadKey, setReloadKey] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   // One prompt dialog serves collection creation, renaming and mock publishing.
   // window.prompt is not available in every browser context, so it is avoided.
@@ -141,7 +143,14 @@ export function Sidebar({ onOpenEnvironments, onOpenSettings, onNavigate }: Prop
   }
 
   const deleteCollection = async (id: string, name: string) => {
-    if (!window.confirm(`Delete "${name}"? Requests inside it are kept.`)) return
+    if (
+      !(await confirm({
+        title: `Delete "${name}"?`,
+        description: 'Requests inside this collection are kept and move to Unsorted.',
+        confirmLabel: 'Delete collection',
+      }))
+    )
+      return
     await api.deleteCollection(id)
     setReloadKey((k) => k + 1)
     toast.success('Collection deleted')
@@ -199,7 +208,14 @@ export function Sidebar({ onOpenEnvironments, onOpenSettings, onNavigate }: Prop
   const loose = grouped.get('__none__') ?? []
 
   const deleteRequest = async (r: ApiRequest) => {
-    if (!window.confirm(`Delete "${r.name}"? Runs of it stay in history.`)) return
+    if (
+      !(await confirm({
+        title: `Delete "${r.name}"?`,
+        description: 'Past runs of this request stay in History.',
+        confirmLabel: 'Delete request',
+      }))
+    )
+      return
     await api.deleteRequest(r.id)
     setReloadKey((k) => k + 1)
     if (selectedId === r.id) select(null)
@@ -616,6 +632,8 @@ export function Sidebar({ onOpenEnvironments, onOpenSettings, onNavigate }: Prop
           void current?.onConfirm(values.value ?? '')
         }}
       />
+
+      {confirmDialog}
     </aside>
   )
 }
@@ -623,6 +641,7 @@ export function Sidebar({ onOpenEnvironments, onOpenSettings, onNavigate }: Prop
 function HistoryList() {
   const { history, setHistory, select, startDraft } = useWorkspace()
   const [query, setQuery] = useState('')
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   const refresh = async () => {
     const entries = await api.history(query)
@@ -635,7 +654,14 @@ function HistoryList() {
   }, [query])
 
   const clearAll = async () => {
-    if (!window.confirm('Clear all history? This cannot be undone.')) return
+    if (
+      !(await confirm({
+        title: 'Clear all history?',
+        description: 'Every recorded run is removed. This cannot be undone.',
+        confirmLabel: 'Clear history',
+      }))
+    )
+      return
     await api.clearHistory()
     setHistory([])
     toast.success('History cleared')
@@ -744,6 +770,8 @@ function HistoryList() {
           ))
         )}
       </div>
+
+      {confirmDialog}
     </>
   )
 }
