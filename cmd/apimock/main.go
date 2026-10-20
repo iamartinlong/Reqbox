@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io/fs"
-	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -19,6 +18,7 @@ import (
 	"time"
 
 	apimock "apimock"
+	"apimock/internal/logging"
 	"apimock/internal/server"
 	"apimock/internal/store"
 )
@@ -45,12 +45,7 @@ func run() error {
 		return nil
 	}
 
-	level := slog.LevelInfo
-	if *verbose {
-		level = slog.LevelDebug
-	}
-	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
-	slog.SetDefault(log)
+	log := logging.New(*verbose)
 
 	st, err := store.Open(*dbPath)
 	if err != nil {
@@ -87,7 +82,7 @@ func run() error {
 	return nil
 }
 
-func listenAndServe(ctx context.Context, srv *http.Server, log *slog.Logger) error {
+func listenAndServe(ctx context.Context, srv *http.Server, log *logging.Logger) error {
 	ln, err := net.Listen("tcp", srv.Addr)
 	if err != nil {
 		return fmt.Errorf("listen on %s: %w", srv.Addr, err)

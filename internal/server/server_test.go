@@ -1,10 +1,10 @@
 package server
 
 import (
+	"apimock/internal/logging"
 	"bytes"
 	"encoding/json"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -22,7 +22,7 @@ func newTestServer(t *testing.T) (http.Handler, *store.Store) {
 	}
 	t.Cleanup(func() { _ = st.Close() })
 
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	log := logging.Discard()
 	return New(st, log, Config{}, nil), st
 }
 

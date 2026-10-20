@@ -1,8 +1,8 @@
 package server
 
 import (
+	"apimock/internal/logging"
 	"io/fs"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -27,7 +27,7 @@ type Config struct {
 }
 
 // New builds the router, wiring JSON API routes, the mock gateway and the SPA.
-func New(store *store.Store, log *slog.Logger, cfg Config, assets fs.FS) http.Handler {
+func New(store *store.Store, log *logging.Logger, cfg Config, assets fs.FS) http.Handler {
 	a := &api{store: store, runner: runner.New(), log: log}
 
 	r := chi.NewRouter()

@@ -1,10 +1,10 @@
 package server
 
 import (
+	"apimock/internal/logging"
 	"encoding/json"
 	"errors"
 	"io"
-	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -17,7 +17,7 @@ import (
 type api struct {
 	store  *store.Store
 	runner *runner.Executor
-	log    *slog.Logger
+	log    *logging.Logger
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
