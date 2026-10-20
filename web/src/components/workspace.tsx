@@ -133,7 +133,10 @@ export function Workspace() {
   const send = useCallback(async () => {
     if (!draft || !draft.url.trim() || running) return
     setRunning(true)
-    responseOwner.current = draft.id || '__draft__'
+    // Remember which request this run belongs to. The user may switch requests
+    // while it is in flight; the result must not land on the new one.
+    const runFor = draft.id || '__draft__'
+    responseOwner.current = runFor
     try {
       const res = await api.execute({
         request: draft,
@@ -144,7 +147,9 @@ export function Workspace() {
           verifyTls: options.verifyTls,
         },
       })
-      setResponse(res)
+      if (useWorkspace.getState().draft?.id === draft.id || runFor === '__draft__') {
+        setResponse(res)
+      }
       if (res.error) {
         toast.error(res.error)
       } else {

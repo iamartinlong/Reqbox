@@ -44,13 +44,11 @@ type WorkspaceState = {
     activeEnvId: string
   }) => void
   setHistory: (entries: HistoryEntry[]) => void
-  prependHistory: (entry: HistoryEntry) => void
 
   select: (id: string | null) => void
   startDraft: (partial?: Partial<ApiRequest>) => void
   editDraft: (patch: Partial<ApiRequest>) => void
   setDraft: (request: ApiRequest) => void
-  clearDraft: () => void
 
   setSidebarTab: (tab: 'requests' | 'history') => void
 }
@@ -82,8 +80,6 @@ export const useWorkspace = create<WorkspaceState>()(
         set({ collections, requests, environments, activeEnvId }),
 
       setHistory: (entries) => set({ history: entries }),
-      prependHistory: (entry) =>
-        set({ history: [entry, ...get().history].slice(0, 200) }),
 
       select: (id) => {
         const found = get().requests.find((r) => r.id === id) ?? null
@@ -104,8 +100,6 @@ export const useWorkspace = create<WorkspaceState>()(
       },
 
       setDraft: (request) => set({ draft: request, dirty: false }),
-
-      clearDraft: () => set({ draft: null, selectedId: null, dirty: false }),
 
       setSidebarTab: (tab) => set({ sidebarTab: tab }),
     }),

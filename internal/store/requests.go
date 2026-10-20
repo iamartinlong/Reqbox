@@ -136,14 +136,15 @@ func (s *Store) CreateRequest(r Request) (Request, error) {
 	return r, nil
 }
 
-// UpdateRequest replaces all mutable fields of a request.
-func (s *Store) UpdateRequest(r Request) (Request, error) {
+// UpdateRequest replaces all mutable fields of a request. setCollection says
+// whether CollectionID should be applied; when false the existing link is kept.
+func (s *Store) UpdateRequest(r Request, setCollection bool) (Request, error) {
 	existing, err := s.GetRequest(r.ID)
 	if err != nil {
 		return Request{}, err
 	}
 	s.normalizeRequest(&r)
-	if r.CollectionID == nil {
+	if !setCollection {
 		r.CollectionID = existing.CollectionID
 	}
 	r.CreatedAt = existing.CreatedAt

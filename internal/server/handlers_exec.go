@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -12,10 +13,13 @@ import (
 	"apimock/internal/store"
 )
 
+// execOptions mirrors the UI's send settings. The booleans are pointers so an
+// omitted field can be told apart from an explicit false: previously a client
+// that sent only timeoutSeconds silently disabled TLS verification.
 type execOptions struct {
-	TimeoutSeconds  int  `json:"timeoutSeconds"`
-	FollowRedirects bool `json:"followRedirects"`
-	VerifyTLS       bool `json:"verifyTls"`
+	TimeoutSeconds  int   `json:"timeoutSeconds"`
+	FollowRedirects *bool `json:"followRedirects"`
+	VerifyTLS       *bool `json:"verifyTls"`
 }
 
 type execRequest struct {
@@ -65,8 +69,13 @@ func (a *api) handleExecute(w http.ResponseWriter, r *http.Request) {
 		if body.Options.TimeoutSeconds > 0 && body.Options.TimeoutSeconds <= 600 {
 			opts.Timeout = time.Duration(body.Options.TimeoutSeconds) * time.Second
 		}
-		opts.FollowRedirects = body.Options.FollowRedirects
-		opts.VerifyTLS = body.Options.VerifyTLS
+		// Omitted booleans keep the safe defaults (redirects on, TLS verified).
+		if body.Options.FollowRedirects != nil {
+			opts.FollowRedirects = *body.Options.FollowRedirects
+		}
+		if body.Options.VerifyTLS != nil {
+			opts.VerifyTLS = *body.Options.VerifyTLS
+		}
 	}
 
 	vars, envName := a.resolveVars(body.EnvironmentID, body.Variables)
@@ -167,9 +176,19 @@ func (a *api) handleMock(w http.ResponseWriter, r *http.Request) {
 	opts.Timeout = 60 * time.Second
 
 	vars, _ := a.resolveVars("", map[string]string{})
-	// Query strings on the mock URL are treated as variable overrides.
+
+	// Query strings on the mock URL are treated as variable overrides, which is
+	// what lets one published endpoint serve many inputs. They must not be able
+	// to redirect the call: a caller who changes the resolved host would receive
+	// the request still carrying the owner's stored credentials.
+	trustedHost := hostOfRequest(saved, vars)
 	for key := range r.URL.Query() {
 		vars[key] = r.URL.Query().Get(key)
+	}
+	if hostOfRequest(saved, vars) != trustedHost {
+		saved.AuthType = "none"
+		saved.Auth = store.Auth{}
+		saved.Headers = nil
 	}
 
 	// The caller's method wins when it is not a plain GET, so a saved POST can
@@ -189,7 +208,20 @@ func (a *api) handleMock(w http.ResponseWriter, r *http.Request) {
 		contentType = "application/octet-stream"
 	}
 	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("X-ApiMock-History", "off")
 	w.WriteHeader(res.Status)
 	_, _ = w.Write(res.Body)
+}
+
+// hostOfRequest resolves the request URL and returns its host, or "" when the
+// URL cannot be parsed. Used to detect a caller moving a mock to another host.
+func hostOfRequest(req store.Request, vars map[string]string) string {
+	raw, err := runner.BuildURL(req.URL, req.Params, vars)
+	if err != nil {
+		return ""
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	return strings.ToLower(u.Scheme + "://" + u.Host)
 }

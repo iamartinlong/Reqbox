@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"apimock/internal/store"
@@ -167,6 +168,50 @@ func TestExecuteRejectsEmptyURL(t *testing.T) {
 	}
 }
 
+// Omitting the security flags must not turn protection off. A client that sends
+// only a timeout previously got TLS verification disabled, because a missing
+// bool decoded to false. That decoding lives in the server, so this asserts the
+// end-to-end behaviour against a self-signed endpoint.
+func TestExecuteOmittedFlagsKeepTLSVerification(t *testing.T) {
+	upstream := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("secret"))
+	}))
+	defer upstream.Close()
+
+	h, _ := newTestServer(t)
+
+	// Only a timeout: verifyTls is absent and must default to true, so the
+	// self-signed certificate has to be rejected.
+	rec := do(t, h, "POST", "/api/execute", map[string]any{
+		"request": map[string]any{"url": upstream.URL, "method": "GET"},
+		"options": map[string]any{"timeoutSeconds": 5},
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	body := decode[map[string]any](t, rec)
+	errText, _ := body["error"].(string)
+	if errText == "" {
+		t.Fatal("expected TLS verification to fail with omitted verifyTls")
+	}
+	if !strings.Contains(errText, "certificate") {
+		t.Errorf("expected a certificate error, got %q", errText)
+	}
+
+	// The same call with verification explicitly off must succeed.
+	rec = do(t, h, "POST", "/api/execute", map[string]any{
+		"request": map[string]any{"url": upstream.URL, "method": "GET"},
+		"options": map[string]any{"timeoutSeconds": 5, "verifyTls": false},
+	})
+	body = decode[map[string]any](t, rec)
+	if body["error"] != nil {
+		t.Errorf("explicit verifyTls=false should succeed, got %v", body["error"])
+	}
+	if body["body"] != "secret" {
+		t.Errorf("body = %v", body["body"])
+	}
+}
+
 // A brand-new draft from the UI has empty timestamps and empty ids. Those must
 // not be rejected by timestamp parsing.
 func TestExecuteAcceptsBlankDraft(t *testing.T) {
@@ -270,6 +315,36 @@ func TestMockIsHiddenWhenUnpublished(t *testing.T) {
 	rec := do(t, h, "GET", "/mock/draft", nil)
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("unpublished mock = %d, want 404", rec.Code)
+	}
+}
+
+// A caller must not be able to redirect a published mock to another host, or
+// they would receive the owner's stored credentials.
+func TestMockDropsCredentialsWhenHostChanges(t *testing.T) {
+	var gotAuth string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer upstream.Close()
+
+	h, st := newTestServer(t)
+	_, err := st.CreateRequest(store.Request{
+		Name: "Leaky", Method: "GET", URL: "{{baseUrl}}/thing",
+		AuthType: "bearer", Auth: store.Auth{Token: "SECRET"},
+		ExposeSlug: "leaky", Exposed: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The caller points baseUrl somewhere the owner never intended.
+	rec := do(t, h, "GET", "/mock/leaky?baseUrl="+upstream.URL, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("mock = %d %s", rec.Code, rec.Body)
+	}
+	if gotAuth != "" {
+		t.Errorf("credentials leaked to a caller-chosen host: %q", gotAuth)
 	}
 }
 
@@ -412,6 +487,38 @@ func TestCurlEndpoint(t *testing.T) {
 	out := decode[map[string]string](t, rec)
 	if out["curl"] == "" {
 		t.Error("expected a curl command")
+	}
+}
+
+func TestCrossOriginWritesAreRejected(t *testing.T) {
+	h, _ := newTestServer(t)
+
+	req := httptest.NewRequest("POST", "/api/requests", strings.NewReader(`{"name":"x","url":"http://x.test"}`))
+	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("Origin", "https://evil.example")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("cross-origin write = %d, want 403", rec.Code)
+	}
+
+	// A same-origin write still works.
+	req = httptest.NewRequest("POST", "/api/requests", strings.NewReader(`{"name":"ok","url":"http://x.test"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "http://"+req.Host)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Errorf("same-origin write = %d, want 201: %s", rec.Code, rec.Body)
+	}
+
+	// No Origin at all (curl, tests) is allowed: this is a local tool.
+	req = httptest.NewRequest("POST", "/api/requests", strings.NewReader(`{"name":"cli","url":"http://x.test"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Errorf("origin-less write = %d, want 201", rec.Code)
 	}
 }
 

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -139,19 +140,46 @@ type slugError struct{}
 
 func (e *slugError) Error() string { return "mock slug is already in use" }
 
-func (a *api) handleUpdateRequest(w http.ResponseWriter, r *http.Request) {
+// requestUpdate is the payload for replacing a request. CollectionID is decoded
+// separately because `null` means "move to unsorted" while an omitted key means
+// "leave it where it is" - a plain *string cannot express both, so presence is
+// checked on the raw map.
+type requestUpdate struct {
+	request       store.Request
+	collectionSet bool
+}
+
+func decodeRequestUpdate(r *http.Request) (requestUpdate, error) {
+	var raw map[string]json.RawMessage
+	if err := decodeBody(r, &raw); err != nil {
+		return requestUpdate{}, err
+	}
+	encoded, err := json.Marshal(raw)
+	if err != nil {
+		return requestUpdate{}, err
+	}
 	var body store.Request
-	if err := decodeBody(r, &body); err != nil {
+	if err := json.Unmarshal(encoded, &body); err != nil {
+		return requestUpdate{}, err
+	}
+	_, collectionSet := raw["collectionId"]
+	return requestUpdate{request: body, collectionSet: collectionSet}, nil
+}
+
+func (a *api) handleUpdateRequest(w http.ResponseWriter, r *http.Request) {
+	update, err := decodeRequestUpdate(r)
+	if err != nil {
 		writeErr(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
+	body := update.request
 	body.ID = chi.URLParam(r, "id")
 
 	if err := a.prepareExposure(&body); err != nil {
 		a.fail(w, err)
 		return
 	}
-	item, err := a.store.UpdateRequest(body)
+	item, err := a.store.UpdateRequest(body, update.collectionSet)
 	if err != nil {
 		a.fail(w, err)
 		return

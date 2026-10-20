@@ -199,6 +199,30 @@ Spa fallback.
 
 - No WebSocket or SSE client; HTTP only.
 - No request chaining or scripting hooks.
-- No multi-user auth. Anyone who can reach the port can read and edit everything,
-  so bind to localhost or keep it on a trusted network.
-- Mock endpoints run live rather than serving canned responses.
+- **No authentication.** Anyone who can reach the port can read and edit
+  everything, including stored credentials, which are kept in plain text in the
+  SQLite file and in history snapshots so requests can be replayed. Bind to
+  localhost (`-addr 127.0.0.1:5178`) or keep it on a trusted network.
+- **Published mocks are callable without credentials.** A mock applies the
+  saved request's own URL, headers and auth on the caller's behalf. Query
+  parameters on the mock URL fill `{{placeholders}}`; if they change the target
+  host, the saved auth and headers are dropped so a caller cannot redirect the
+  owner's credentials elsewhere. Publishing is still handing out a capability:
+  only publish requests you are willing for others to run.
+- Mock endpoints run live rather than serving canned responses. The caller's
+  request body is not forwarded; the saved body is used.
+- Cross-origin writes are rejected via an `Origin` check, but requests without
+  an `Origin` header (curl, scripts) are allowed by design.
+
+## Audit notes
+
+Verified by test or by hand, and covered by the suites where possible:
+
+- Cross-compiles and runs from a clean clone without a prior web build.
+- Concurrent execution (20 parallel sends) and concurrent writes (15 parallel
+  creates) complete without a SQLite busy error.
+- SQL injection, path traversal and oversized/nested JSON payloads are rejected
+  or harmlessly absorbed.
+- Omitted `verifyTls` / `followRedirects` keep their secure defaults; only an
+  explicit `false` disables them.
+

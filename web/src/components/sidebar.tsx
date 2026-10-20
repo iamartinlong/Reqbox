@@ -190,14 +190,43 @@ export function Sidebar({ onOpenEnvironments, onOpenSettings, onNavigate }: Prop
   }
 
   const importWorkspace = async (file: File) => {
+    let data: unknown
     try {
       const text = await file.text()
-      const data = JSON.parse(text)
+      data = JSON.parse(text)
+    } catch {
+      toast.error('That file is not valid JSON')
+      return
+    }
+
+    // Import replaces the whole workspace. Say so before touching anything.
+    const counts = data as {
+      requests?: unknown[]
+      collections?: unknown[]
+      environments?: unknown[]
+    }
+    const incoming =
+      (counts.requests?.length ?? 0) +
+      (counts.collections?.length ?? 0) +
+      (counts.environments?.length ?? 0)
+    if (
+      !(await confirm({
+        title: 'Replace this workspace?',
+        description:
+          incoming > 0
+            ? `Importing replaces every saved request, collection and environment with the ${incoming} item(s) in this file. This cannot be undone.`
+            : 'This file is empty, so importing it deletes every saved request, collection and environment. This cannot be undone.',
+        confirmLabel: 'Replace workspace',
+      }))
+    )
+      return
+
+    try {
       const res = await api.importWorkspace(data)
       setReloadKey((k) => k + 1)
       toast.success(`Imported ${res.requests} requests`)
-    } catch {
-      toast.error('That file is not a valid ApiMock export')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Import failed')
     }
   }
 

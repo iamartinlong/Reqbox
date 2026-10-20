@@ -96,6 +96,47 @@ func TestRequestRoundTrip(t *testing.T) {
 	}
 }
 
+func TestRequestCollectionCanBeCleared(t *testing.T) {
+	s := testStore(t)
+	col, _ := s.CreateCollection("Group")
+	created, err := s.CreateRequest(Request{
+		CollectionID: &col.ID, Name: "Move me", Method: "GET", URL: "https://x.test",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// setCollection=true with a nil id means "move to unsorted".
+	moved, err := s.UpdateRequest(Request{
+		ID: created.ID, Name: "Move me", Method: "GET", URL: "https://x.test",
+		CollectionID: nil,
+	}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if moved.CollectionID != nil {
+		t.Errorf("collection was not cleared: %v", moved.CollectionID)
+	}
+
+	// setCollection=false must leave the current link untouched.
+	back, _ := s.UpdateRequest(Request{
+		ID: created.ID, Name: "Move me", Method: "GET", URL: "https://x.test",
+		CollectionID: &col.ID,
+	}, true)
+	if back.CollectionID == nil {
+		t.Fatal("setup failed")
+	}
+	kept, err := s.UpdateRequest(Request{
+		ID: created.ID, Name: "Renamed", Method: "GET", URL: "https://x.test",
+	}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if kept.CollectionID == nil || *kept.CollectionID != col.ID {
+		t.Errorf("omitting collectionId should keep the link, got %v", kept.CollectionID)
+	}
+}
+
 func TestDuplicateAndDeleteRequest(t *testing.T) {
 	s := testStore(t)
 	created, err := s.CreateRequest(Request{Name: "Original", Method: "GET", URL: "https://x.test"})

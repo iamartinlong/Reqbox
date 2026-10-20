@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -35,6 +36,7 @@ func New(store *store.Store, log *slog.Logger, cfg Config, assets fs.FS) http.Ha
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5, "application/json", "text/html", "text/css", "application/javascript", "image/svg+xml"))
 	r.Use(noCacheAPI)
+	r.Use(sameOriginGuard)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/health", a.handleHealth)
@@ -94,6 +96,33 @@ func New(store *store.Store, log *slog.Logger, cfg Config, assets fs.FS) http.Ha
 	}
 
 	return r
+}
+
+// sameOriginGuard rejects state-changing API calls that a browser reports as
+// coming from another origin. The API has no auth tokens, so without this a
+// page on any site could POST here and rewrite the workspace (a request built
+// with Content-Type: text/plain is a "simple" request and needs no preflight).
+// Requests with no Origin header at all - curl, scripts - are allowed, since
+// this is a local tool and those are not browser-driven.
+func sameOriginGuard(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet, http.MethodHead, http.MethodOptions:
+			next.ServeHTTP(w, r)
+			return
+		}
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		u, err := url.Parse(origin)
+		if err != nil || !strings.EqualFold(u.Host, r.Host) {
+			writeErr(w, http.StatusForbidden, "cross-origin request rejected")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // noCacheAPI keeps the JSON API honest during development.
