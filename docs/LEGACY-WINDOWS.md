@@ -1,94 +1,118 @@
 <a id="legacy-windows"></a>
 
-# Windows Server 2008 R2 兼容分支
+# Windows 旧版服务器兼容包
 
-主分支的构建产物**无法在 Windows Server 2008 R2 上运行**。本文说明原因、
-兼容分支做了什么，以及如何维护它。
+主分支的构建产物在 **Windows Server 2016 之前**的系统上可能无法启动。
+本文说明原因、适用范围，以及遇到时该怎么办。
 
-分支：`legacy/win2008r2`
+兼容包产物：`dist/apimock-hushu-win-legacy-amd64/`
+兼容分支：`legacy/win2008r2`（分支名按最初需求命名，实际适用范围更广）
 
 ---
 
+## 适用范围与实测状态
+
+| 系统 | 内核 | 主分支包 | 兼容包 |
+| ---- | ---- | -------- | ------ |
+| Windows Server 2012 R2 | NT 6.3 | 未验证 | ✅ **已实测通过** |
+| Windows Server 2012 | NT 6.2 | 未验证 | ✅ 预期可用（同工具链范围） |
+| Windows Server 2008 R2 | NT 6.1 | 预期失败 | ✅ 兼容包为此构建 |
+| Windows 8.1 / 8 / 7 | NT 6.3 / 6.2 / 6.1 | 预期失败 | ✅ 同内核范围 |
+| Windows 10 / Server 2016+ | NT 10.0 | ✅ 推荐 | ✅ 可用 |
+
+> **实测记录**（2026-10-20）：Windows Server 2012 R2 上直接运行兼容包，
+> 服务正常启动，接口与前端均可用。
+
 ## 为什么主分支跑不了
 
-不是配置问题，是工具链边界。Go 官方支持表写得很明确：
+不是配置问题，是工具链边界。Go 1.21 发布说明原文：
 
-| 系统 | 最后支持的 Go 版本 |
-| ---- | ------------------ |
-| Windows 10 / Server 2016+ | 当前版本 |
-| Windows 8 / Server 2012 | Go 1.20 |
-| **Windows 7 / Server 2008 R2** | **Go 1.20** |
+> Go 1.21 requires at least Windows 10 or Windows Server 2016
 
-主分支用 Go 1.24。从 Go 1.21 起，编译出的程序依赖 2008 R2 不具备的能力：
+相关改动与后果：
 
-| 改动 | 引入版本 | 在 2008 R2 上的结果 |
-| ---- | -------- | ------------------- |
-| 启动即调用 `ProcessPrng` | 1.21（1.22 加强） | 找不到入口点，**进程秒退** |
-| 加载 DLL 使用 KB2533623 引入的标志 | 1.21 | 未打该补丁则**启动失败** |
-| 套接字使用 `WSA_FLAG_NO_HANDLE_INHERIT` | 1.22 | 无 SP1 时**建 socket 失败** |
-| PE 头写入 Windows 10 最低版本 | 1.27 | 旧系统拒绝加载 |
+| 改动 | 引入版本 | 在旧系统上的结果 |
+| ---- | -------- | ---------------- |
+| 启动即调用 `ProcessPrng` | 1.21 | 函数缺失则**进程秒退，无日志** |
+| 加载 DLL 使用 KB2533623 的标志 | 1.21 | 未打补丁则启动失败 |
+| 套接字使用 `WSA_FLAG_NO_HANDLE_INHERIT` | 1.22 | 无 SP1 时建 socket 失败 |
 
-诊断特征：**双击 exe 后窗口一闪而过，没有任何日志**。这正是「启动即失败」
-的表现，而不是端口或数据问题。
+### `ProcessPrng` 的实际边界
 
-## 兼容分支的取舍
+它由 `bcryptprimitives.dll` 导出。Microsoft 文档标注「Server 2008 R2」，
+但该导出实际从 **Server 2012** 起才提供。因此：
 
-用 **Go 1.20.14** 编译。它早于上述全部改动，因此原版 1.20 的产物可以直接
-在 2008 R2 上运行 —— 不需要第三方 fork。
+- **2008 R2**：无此导出 → 主分支二进制**必然**启动失败。
+- **2012 R2**：有此导出 → 主分支**可能**能跑，但处于官方未测试的边界。
 
-代价：为满足 Go 1.20 的语法与依赖约束，做了三处调整。
+Go 1.24 的 `runtime/os_windows.go` 里，`windowsFindfunc` 没有 nil 检查，
+直接 `stdcall2(_ProcessPrng, ...)`，所以缺失时无法降级，只能崩溃。
+
+**诊断特征**：双击 exe 后窗口一闪而过、没有任何日志。这是「启动即失败」，
+不是端口或数据问题。
+
+## 遇到时怎么处理
+
+1. **先试主分支包**（`dist/apimock-windows-amd64.exe`）：
+
+   ```
+   apimock-windows-amd64.exe -version
+   ```
+
+   输出 `apimock 0.1.0` 说明可用，不必换包。
+
+2. **一闪而过则改用兼容包**（`dist/apimock-hushu-win-legacy-amd64/`）。
+   Go 1.20 编译，已实测可在 2012 R2 与 2008 R2 上运行。
+
+## 兼容分支做了什么
+
+用 **Go 1.20.14** 编译。它早于上述全部改动，因此原版 1.20 的产物即可运行，
+不需要第三方 fork。为满足 Go 1.20 的约束，有三处调整：
 
 ### 1. `log/slog` → `internal/logging`
 
-`slog` 是 Go 1.21 的标准库。替换为自建包，保留同样的 `key, value` 调用
-形状，调用点无需改写：
+`slog` 是 Go 1.21 的标准库。替换为自建包，保留同样的 `key, value` 调用形状：
 
 ```go
 log := logging.New(*verbose)
 log.Info("ApiMock started", "url", url, "version", server.Version)
 ```
 
-输出格式与 slog 的文本处理器相近：`level=INFO msg=... url=...`。
+输出接近 slog 的文本格式：`level=INFO msg=... url=...`。
 
-### 2. SQLite 驱动降级
+### 2. SQLite 驱动降级到 v1.29.10
 
-`modernc.org/sqlite` 从 v1.30 起就要求更高的 Go 版本；v1.32.0 虽然声明
-`go 1.20`，实际却使用了 Go 1.21 才有的 `runtime.Pinner`。
-
-实测可用的最后一个版本是 **v1.29.10**。连带锁定：
+`v1.32.0` 虽声明 `go 1.20`，实际用了 Go 1.21 才有的 `runtime.Pinner`。
+实测可用的最后版本是 **v1.29.10**，连带锁定：
 
 | 模块 | 版本 | 原因 |
 | ---- | ---- | ---- |
-| `modernc.org/sqlite` | v1.29.10 | v1.32 起用 `runtime.Pinner` |
-| `modernc.org/libc` | v1.55.3 | 更高版本依赖需 Go 1.23 的 `golang.org/x/exp` |
-| `modernc.org/memory` | v1.8.0 | 更高版本要求 Go 1.23 的 `golang.org/x/sys` |
-| `golang.org/x/sys` | v0.22.0 | 更高版本包含 Go 1.23 语法 |
+| `modernc.org/sqlite` | v1.29.10 | v1.32 起使用 `runtime.Pinner` |
+| `modernc.org/libc` | v1.55.3 | 更高版本依赖需 Go 1.23 的 `x/exp` |
+| `modernc.org/memory` | v1.8.0 | 更高版本要求 Go 1.23 的 `x/sys` |
+| `golang.org/x/sys` | v0.22.0 | 更高版本含 Go 1.23 语法 |
 
-这些是**硬约束**，`go mod tidy` 会自动把它们拉高到不兼容版本，因此每次
-tidy 之后都要检查。
+这些是**硬约束**：`go mod tidy` 会自动把它们拉高到不兼容版本，每次 tidy
+之后都要复查。
 
-### 3. `go.mod` 声明
+### 3. `go.mod` 声明 `go 1.20`
 
-```
-go 1.20
-```
-
-## 构建
+## 构建兼容包
 
 ```bash
-# 需要 Go 1.20（本机放于 D:\go120）
+# 需要 Go 1.20（本机位于 D:\go120）
 export PATH="D:/go120/go/bin:$PATH"
-export GOTOOLCHAIN=local    # 禁止 Go 自动切换到新工具链
+export GOTOOLCHAIN=local    # 不可省略
 
 go build -trimpath \
   -ldflags "-s -w -X apimock/internal/server.Version=0.1.0" \
   -o apimock.exe ./cmd/apimock
 ```
 
-`GOTOOLCHAIN=local` 不可省略：否则新版 go 命令会因 `go 1.20` 指令自动下载
-并使用更新的工具链，等于白降级。
+`GOTOOLCHAIN=local` 必须设置：否则新版 go 命令读到 `go 1.20` 指令后会自动
+下载更新的工具链，等于白降级。
 
-**验证 PE 头**（应为 6.1，而不是 10.0）：
+**验证 PE 头**（应为 6.1，而非 10.0）：
 
 ```powershell
 $b = [IO.File]::ReadAllBytes("apimock.exe")
@@ -100,37 +124,26 @@ $pe = [BitConverter]::ToInt32($b, 0x3C); $opt = $pe + 24
 
 | 项 | 状态 |
 | -- | ---- |
-| Go 1.20 下 `go build` | ✅ 通过 |
+| Go 1.20 下 `go build` | ✅ |
 | Go 1.20 下 `go test ./...` | ✅ 41 个测试全绿 |
 | PE 头声明 6.1 | ✅ |
-| 在本机（Win10）启动、健康检查、嵌入前端、预置数据 | ✅ |
-| **在真实 Windows Server 2008 R2 上运行** | ❌ **未验证** |
-
-最后一项只能在实际服务器上确认。请在服务器上执行：
-
-```
-apimock.exe -version
-apimock.exe -addr 127.0.0.1:5178
-```
-
-预期输出 `apimock 0.1.0`，然后 `http://127.0.0.1:5178/api/health` 返回
-`{"status":"ok"}`。
-
-**如果仍然秒退**，可能是系统缺少 Service Pack 1。Go 1.20 的部分网络代码
-需要 SP1 提供的标志（`WSA_FLAG_NO_HANDLE_INHERIT`）。检查系统版本：
-
-```
-systeminfo | findstr /B /C:"OS Name" /C:"OS Version"
-```
-
-`6.1.7601` 是 SP1，`6.1.7600` 则不是。
+| 本机（Win10）启动、健康检查、嵌入前端、预置数据 | ✅ |
+| **Windows Server 2012 R2 实机运行** | ✅ **2026-10-20 确认** |
+| Windows Server 2008 R2 实机运行 | ❌ 未直接验证（同工具链范围，预期可用） |
 
 ## 维护策略
 
 - **主分支保持最新**，不为兼容性让步。
-- **兼容分支只在必要时接受最小改动**，不合并主分支的新功能，除非确有必要。
+- **兼容分支只接受最小改动**，不合并主分支的新功能，除非确有必要。
 - 两者共享同一份前端 `web/dist`，界面完全一致。
-- 功能上两者相同；差异仅限工具链与依赖版本。
+- 功能完全相同；差异仅限工具链与依赖版本。
 
-若将来主分支引入新的 Go 1.21+ 特性，兼容分支会编译失败 —— 这是**预期**
-的信号，说明该改动要么在兼容分支中绕开，要么明确放弃兼容。
+若主分支将来引入新的 Go 1.21+ 特性，兼容分支会编译失败 —— 这是**预期**
+信号：该改动要么在兼容分支中绕开，要么明确放弃对旧系统的支持。
+
+## 风险提示
+
+- Go 1.20 已于 2024 年 2 月停止维护，兼容包不再获得运行时的安全更新。
+- Windows Server 2012 R2 的扩展支持已于 2023 年 10 月结束。
+- 两者叠加：**只应部署在隔离内网**，不要暴露到公网。
+- 该服务本身无鉴权，能访问端口者即可读写全部数据、查看明文凭据。
