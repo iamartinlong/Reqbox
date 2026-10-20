@@ -103,7 +103,13 @@ export function PromptDialog({
           <button type="submit" className="hidden" aria-hidden tabIndex={-1} />
         </form>
 
-        <DialogFooter className="border-t-0 bg-transparent p-0">
+        {/*
+          DialogFooter ships with -mx-4 -mb-4 p-4 because it is designed as a
+          full-bleed band inside DialogContent's default p-4. Resetting the
+          negative margins keeps the buttons inside the card and lets the
+          dialog's own padding provide the space below them.
+        */}
+        <DialogFooter className="mx-0 mb-0 border-t-0 bg-transparent p-0 pt-1">
           <Button variant="outline" size="sm" type="button" onClick={onCancel}>
             Cancel
           </Button>

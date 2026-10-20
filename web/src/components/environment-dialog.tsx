@@ -235,8 +235,14 @@ export function EnvironmentDialog({ open, onOpenChange }: Props) {
           </div>
         </div>
 
-        <DialogFooter className="border-t border-border px-4 py-2">
-          <p className="mr-auto text-[10.5px] text-muted-foreground">
+        {/*
+          This dialog's content uses p-0 so the panes can reach the edges. The
+          footer is meant to be a full-bleed band, but DialogFooter's default
+          -mx-4 -mb-4 would then push it outside the card (and overflow-hidden
+          would clip the Done button). Zero the negative margins here.
+        */}
+        <DialogFooter className="mx-0 mb-0 border-t border-border px-4 py-2.5">
+          <p className="mr-auto self-center text-[10.5px] text-muted-foreground">
             Active environment applies to every request you send.
           </p>
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
