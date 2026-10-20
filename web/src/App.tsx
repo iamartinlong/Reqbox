@@ -19,7 +19,11 @@ export default function App() {
     let cancelled = false
     const ping = async () => {
       try {
-        const res = await fetch('/api/health')
+        // A hung server would otherwise leave the indicator green forever.
+        const res = await fetch('/api/health', {
+          cache: 'no-store',
+          signal: AbortSignal.timeout(5000),
+        })
         if (!cancelled) setOnline(res.ok)
       } catch {
         if (!cancelled) setOnline(false)

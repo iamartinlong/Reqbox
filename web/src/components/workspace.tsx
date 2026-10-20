@@ -88,6 +88,19 @@ export function Workspace() {
     }
   }, [draftKey, response])
 
+  // The sidebar can change the selected request behind the editor's back (for
+  // example publishing it, or duplicating another one). Pull the saved version
+  // in whenever the open request changed on the server and has no local edits,
+  // so the editor never shows stale state.
+  useEffect(() => {
+    if (!draft?.id || dirty) return
+    const fresh = requests.find((r) => r.id === draft.id)
+    if (!fresh) return
+    if (fresh.updatedAt !== draft.updatedAt) {
+      setDraft(fresh)
+    }
+  }, [requests, draft?.id, draft?.updatedAt, dirty, setDraft])
+
   const save = useCallback(async () => {
     if (!draft || !draft.url.trim()) {
       toast.error('Add a URL before saving')

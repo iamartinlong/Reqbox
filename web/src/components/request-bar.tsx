@@ -62,13 +62,19 @@ export function RequestBar({ onSend, onSave, running, canSave }: Props) {
         </div>
       </div>
 
-      <div className="flex items-stretch gap-0 overflow-hidden rounded-lg border border-border bg-background focus-within:border-ring/60">
+      {/*
+        The row is a fixed height rather than a stretch-to-tallest flex line.
+        Previously the URL input's own content box (18.75px) drove the row
+        height, leaving the bar visibly shorter than the flat-bordered SEND
+        button beside it. Every child now fills one 34px track.
+      */}
+      <div className="flex h-[34px] items-stretch gap-0 overflow-hidden rounded-lg border border-border bg-background focus-within:border-ring/60">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
               className={cn(
-                'mono flex w-[92px] shrink-0 items-center justify-between gap-1 border-r border-border px-2.5 text-[12px] font-bold tracking-wide',
+                'mono flex w-[92px] shrink-0 items-center justify-between gap-1 border-r border-border px-2.5 text-[12px] font-bold tracking-wide hover:bg-accent/50',
                 methodColor[method] ?? 'text-m-other',
               )}
               aria-label="HTTP method"
@@ -99,13 +105,13 @@ export function RequestBar({ onSend, onSave, running, canSave }: Props) {
           placeholder="https://api.example.com/v1/resource"
           spellCheck={false}
           aria-label="Request URL"
-          className="mono min-w-0 flex-1 bg-transparent px-3 text-[12.5px] outline-none placeholder:text-muted-foreground/60"
+          className="mono h-full min-w-0 flex-1 bg-transparent px-3 text-[12.5px] leading-none outline-none placeholder:text-muted-foreground/60"
         />
 
         <button
           type="button"
           onClick={() => void copyURL()}
-          className="flex w-8 items-center justify-center border-l border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex w-8 shrink-0 items-center justify-center border-l border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           aria-label="Copy URL"
         >
           {copied ? <CheckIcon className="size-3.5 text-ok" /> : <CopyIcon className="size-3.5" />}
@@ -114,7 +120,7 @@ export function RequestBar({ onSend, onSave, running, canSave }: Props) {
         <Button
           onClick={onSend}
           disabled={running || !draft.url.trim()}
-          className="mono h-auto w-[104px] shrink-0 rounded-none border-0 border-l border-border text-[12px] font-semibold tracking-wide"
+          className="mono h-full w-[104px] shrink-0 rounded-none border-0 border-l border-border text-[12px] font-semibold tracking-wide"
         >
           {running ? (
             <Loader2Icon className="size-3.5 animate-spin" />

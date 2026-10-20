@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { PromptDialog } from '@/components/prompt-dialog'
 import { api } from '@/lib/api'
 import { methodTint, pathOf, slugify, timeAgo } from '@/lib/format'
 import { useWorkspace } from '@/lib/store'
@@ -65,6 +66,19 @@ export function Sidebar({ onOpenEnvironments, onOpenSettings, onNavigate }: Prop
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [reloadKey, setReloadKey] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // One prompt dialog serves collection creation, renaming and mock publishing.
+  // window.prompt is not available in every browser context, so it is avoided.
+  const [prompt, setPrompt] = useState<null | {
+    title: string
+    description?: string
+    label: string
+    value: string
+    placeholder?: string
+    hint?: string
+    confirmLabel: string
+    onConfirm: (value: string) => void | Promise<void>
+  }>(null)
 
   const activeEnv = environments.find((e) => e.id === activeEnvId)
 
@@ -108,12 +122,22 @@ export function Sidebar({ onOpenEnvironments, onOpenSettings, onNavigate }: Prop
     if (reloadKey > 0) void refresh()
   }, [reloadKey, refresh])
 
-  const createCollection = async () => {
-    const name = window.prompt('Name this collection')
-    if (!name?.trim()) return
-    await api.createCollection(name.trim())
-    setReloadKey((k) => k + 1)
-    toast.success('Collection created')
+  const createCollection = () => {
+    setPrompt({
+      title: 'New collection',
+      description: 'Collections group saved requests in the sidebar.',
+      label: 'Name',
+      value: '',
+      placeholder: 'Payments',
+      confirmLabel: 'Create',
+      onConfirm: async (value) => {
+        const name = value.trim()
+        if (!name) return
+        await api.createCollection(name)
+        setReloadKey((k) => k + 1)
+        toast.success('Collection created')
+      },
+    })
   }
 
   const deleteCollection = async (id: string, name: string) => {
@@ -123,11 +147,20 @@ export function Sidebar({ onOpenEnvironments, onOpenSettings, onNavigate }: Prop
     toast.success('Collection deleted')
   }
 
-  const renameCollection = async (id: string, current: string) => {
-    const name = window.prompt('Rename collection', current)
-    if (!name?.trim()) return
-    await api.updateCollection(id, { name: name.trim() })
-    setReloadKey((k) => k + 1)
+  const renameCollection = (id: string, current: string) => {
+    setPrompt({
+      title: 'Rename collection',
+      label: 'Name',
+      value: current,
+      confirmLabel: 'Rename',
+      onConfirm: async (value) => {
+        const name = value.trim()
+        if (!name || name === current) return
+        await api.updateCollection(id, { name })
+        setReloadKey((k) => k + 1)
+        toast.success('Collection renamed')
+      },
+    })
   }
 
   const activateEnv = async (id: string) => {
@@ -185,21 +218,31 @@ export function Sidebar({ onOpenEnvironments, onOpenSettings, onNavigate }: Prop
     toast.success(r.exposed ? 'Mock unpublished' : 'Mock published')
   }
 
-  const publishRequest = async (r: ApiRequest) => {
-    const name = window.prompt('Publish as a mock at /mock/<slug>. Slug:', r.exposeSlug || slugify(r.name))
-    if (name === null) return
-    const slug = slugify(name)
-    if (!slug) {
-      toast.error('A slug is required')
-      return
-    }
-    try {
-      await api.updateRequest({ ...r, exposeSlug: slug, exposed: true })
-      setReloadKey((k) => k + 1)
-      toast.success(`Published at /mock/${slug}`)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not publish')
-    }
+  const publishRequest = (r: ApiRequest) => {
+    setPrompt({
+      title: 'Publish as a mock',
+      description:
+        'Anyone who can reach this server can call this endpoint. The stored URL, headers and auth are applied for them.',
+      label: 'Slug',
+      value: r.exposeSlug || slugify(r.name),
+      placeholder: 'my-endpoint',
+      hint: 'Letters, numbers and dashes. Must be unique.',
+      confirmLabel: 'Publish',
+      onConfirm: async (value) => {
+        const slug = slugify(value)
+        if (!slug) {
+          toast.error('A slug is required')
+          return
+        }
+        try {
+          await api.updateRequest({ ...r, exposeSlug: slug, exposed: true })
+          setReloadKey((k) => k + 1)
+          toast.success(`Published at /mock/${slug}`)
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : 'Could not publish')
+        }
+      },
+    })
   }
 
   const renderRequest = (r: ApiRequest) => (
@@ -262,7 +305,7 @@ export function Sidebar({ onOpenEnvironments, onOpenSettings, onNavigate }: Prop
               <GlobeIcon /> Unpublish mock
             </DropdownMenuItem>
           ) : (
-            <DropdownMenuItem onClick={() => void publishRequest(r)}>
+            <DropdownMenuItem onClick={() => publishRequest(r)}>
               <GlobeIcon /> Publish as mock
             </DropdownMenuItem>
           )}
@@ -363,7 +406,7 @@ export function Sidebar({ onOpenEnvironments, onOpenSettings, onNavigate }: Prop
                 <Button
                   variant="ghost"
                   size="icon-xs"
-                  onClick={() => void createCollection()}
+                  onClick={() => createCollection()}
                   aria-label="New collection"
                   className="text-muted-foreground"
                 >
@@ -434,7 +477,7 @@ export function Sidebar({ onOpenEnvironments, onOpenSettings, onNavigate }: Prop
                         >
                           <PlusIcon /> New request here
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => void renameCollection(col.id, col.name)}>
+                        <DropdownMenuItem onClick={() => renameCollection(col.id, col.name)}>
                           Rename
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
@@ -551,6 +594,28 @@ export function Sidebar({ onOpenEnvironments, onOpenSettings, onNavigate }: Prop
           }}
         />
       </div>
+
+      <PromptDialog
+        open={prompt !== null}
+        title={prompt?.title ?? ''}
+        description={prompt?.description}
+        fields={[
+          {
+            name: 'value',
+            label: prompt?.label ?? '',
+            value: prompt?.value ?? '',
+            placeholder: prompt?.placeholder,
+            hint: prompt?.hint,
+          },
+        ]}
+        confirmLabel={prompt?.confirmLabel ?? 'Save'}
+        onCancel={() => setPrompt(null)}
+        onSubmit={(values) => {
+          const current = prompt
+          setPrompt(null)
+          void current?.onConfirm(values.value ?? '')
+        }}
+      />
     </aside>
   )
 }
