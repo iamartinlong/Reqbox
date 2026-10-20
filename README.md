@@ -1,11 +1,20 @@
 # ApiMock
 
+> **Naming note.** The Go module, binary and default data path use `apimock`.
+> The repository is currently named `SuperGet`, which does not match. A rename
+> is deliberately deferred until the open questions in
+> [docs/DECISIONS.md](docs/DECISIONS.md#naming) are settled.
+
 A single-binary API workbench. Save HTTP requests in SQLite, run them from the
 browser, inspect the response beside the definition, and republish any saved
 request as a stable mock endpoint.
 
 Written in Go + React. The web build is embedded in the Go binary, so shipping
 it means copying one file.
+
+Outstanding work and the reasoning behind non-obvious choices are kept in
+[docs/](docs/README.md) — start there for the TODO list, decision records,
+changelog and development notes.
 
 ---
 
@@ -108,7 +117,20 @@ web/src/
   components/         UI, one file per surface
   components/ui/      shadcn/ui primitives
   lib/                API client, types, formatting, theme, zustand store
+docs/
+  README.md           index: what lives here and the conventions for it
+  TODO.md             open work, with rationale and acceptance criteria
+  DECISIONS.md        why the non-obvious choices are the way they are
+  CHANGELOG.md        what changed, and which defects were fixed
+  DEVELOPMENT.md      local setup, build and verification
 ```
+
+## Naming
+
+The Go module, binary and default data path use `apimock`. The repository is
+currently named `SuperGet`, which does not match. A rename is intentionally
+deferred; see [docs/DECISIONS.md](docs/DECISIONS.md#naming) for the
+reasoning and [docs/TODO.md](docs/TODO.md#p1) for the full list of what it touches.
 
 ## API
 
