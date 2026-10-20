@@ -15,14 +15,11 @@ func TestIsTempDir(t *testing.T) {
 		t.Error("a folder inside temp should count as temporary")
 	}
 
-	// A directory outside temp is not temporary. Use the working directory,
-	// which is the package folder during tests.
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if isTempDir(wd) {
-		t.Errorf("working directory %q should not count as temporary", wd)
+	// The filesystem root is never inside temp, and unlike the working directory
+	// it stays outside temp even when the repo itself was cloned into temp.
+	root := filepath.VolumeName(os.TempDir()) + string(filepath.Separator)
+	if isTempDir(root) {
+		t.Errorf("filesystem root %q should not count as temporary", root)
 	}
 }
 
