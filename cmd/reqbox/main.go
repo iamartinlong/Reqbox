@@ -1,4 +1,4 @@
-// Command apimock is a single-binary API request workspace: save requests,
+// Command reqbox is a single-binary API request workspace: save requests,
 // run them from a web UI, and republish any of them as a mock endpoint.
 package main
 
@@ -17,10 +17,10 @@ import (
 	"syscall"
 	"time"
 
-	apimock "apimock"
-	"apimock/internal/logging"
-	"apimock/internal/server"
-	"apimock/internal/store"
+	reqbox "reqbox"
+	"reqbox/internal/logging"
+	"reqbox/internal/server"
+	"reqbox/internal/store"
 )
 
 func main() {
@@ -34,10 +34,10 @@ func run() error {
 	var (
 		// Loopback by default: this is a single-user tool, and binding every
 		// interface exposes the workspace to the whole network by accident.
-		addr    = flag.String("addr", envOr("APIMOCK_ADDR", "127.0.0.1:5178"), "listen address; use :5178 or 0.0.0.0:5178 to accept remote connections")
-		dbPath  = flag.String("db", envOr("APIMOCK_DB", defaultDBPath()), "path to the SQLite database file")
-		static  = flag.String("static", envOr("APIMOCK_STATIC", ""), "serve the web UI from this directory instead of the embedded build")
-		token   = flag.String("token", envOr("APIMOCK_TOKEN", ""), "API token; generated and printed once if empty")
+		addr    = flag.String("addr", envOr("REQBOX_ADDR", "127.0.0.1:5178"), "listen address; use :5178 or 0.0.0.0:5178 to accept remote connections")
+		dbPath  = flag.String("db", envOr("REQBOX_DB", defaultDBPath()), "path to the SQLite database file")
+		static  = flag.String("static", envOr("REQBOX_STATIC", ""), "serve the web UI from this directory instead of the embedded build")
+		token   = flag.String("token", envOr("REQBOX_TOKEN", ""), "API token; generated and printed once if empty")
 		noAuth  = flag.Bool("no-auth", false, "disable the API token check (anyone who can reach the port gets full access)")
 		verbose = flag.Bool("verbose", false, "log every HTTP request")
 		showVer = flag.Bool("version", false, "print the version and exit")
@@ -45,7 +45,7 @@ func run() error {
 	flag.Parse()
 
 	if *showVer {
-		fmt.Println("apimock", server.Version)
+		fmt.Println("reqbox", server.Version)
 		return nil
 	}
 
@@ -65,9 +65,9 @@ func run() error {
 	}
 
 	var assets fs.FS
-	if sub, err := fs.Sub(apimock.WebAssets, "web/dist"); err == nil {
+	if sub, err := fs.Sub(reqbox.WebAssets, "web/dist"); err == nil {
 		if _, err := fs.Stat(sub, "index.html"); err == nil {
-			assets = apimock.WebAssets
+			assets = reqbox.WebAssets
 		}
 	}
 
@@ -84,7 +84,7 @@ func run() error {
 	handler := server.New(st, log, server.Config{
 		Addr:      *addr,
 		StaticDir: *static,
-		Dev:       os.Getenv("APIMOCK_DEV") == "1",
+		Dev:       os.Getenv("REQBOX_DEV") == "1",
 		Auth:      auth,
 	}, assets)
 
@@ -139,7 +139,7 @@ func listenAndServe(ctx context.Context, srv *http.Server, log *logging.Logger) 
 	}
 
 	url := displayURL(ln.Addr().String())
-	log.Info("ApiMock started", "url", url, "version", server.Version)
+	log.Info("Reqbox started", "url", url, "version", server.Version)
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -180,7 +180,10 @@ func defaultDBPath() string {
 	if exe, err := os.Executable(); err == nil {
 		dir := filepath.Dir(exe)
 		if !isTempDir(dir) {
-			candidate := filepath.Join(dir, "data", "apimock.db")
+			candidate := filepath.Join(dir, "data", "reqbox.db")
+			if existing := legacyDBPath(candidate); existing != "" {
+				return existing
+			}
 			if err := os.MkdirAll(filepath.Dir(candidate), 0o755); err == nil {
 				if file, err := os.OpenFile(candidate, os.O_CREATE|os.O_WRONLY, 0o644); err == nil {
 					file.Close()
@@ -191,9 +194,44 @@ func defaultDBPath() string {
 	}
 	cfg, err := os.UserConfigDir()
 	if err != nil {
-		return "apimock.db"
+		return "reqbox.db"
 	}
-	return filepath.Join(cfg, "apimock", "apimock.db")
+	// The config directory moved too (apimock/ -> reqbox/), so old data lives in
+	// a sibling directory rather than beside the new path.
+	if existing := legacyConfigDBPath(cfg); existing != "" {
+		return existing
+	}
+	candidate := filepath.Join(cfg, "reqbox", "reqbox.db")
+	if existing := legacyDBPath(candidate); existing != "" {
+		return existing
+	}
+	return candidate
+}
+
+// legacyDBPath returns the pre-rename database beside candidate, if one exists
+// and the new location has nothing yet. Reading the old file in place is safer
+// than copying it, which would fork the data if both binaries were then run.
+func legacyDBPath(candidate string) string {
+	if _, err := os.Stat(candidate); err == nil {
+		return ""
+	}
+	old := filepath.Join(filepath.Dir(candidate), "apimock.db")
+	if _, err := os.Stat(old); err == nil {
+		return old
+	}
+	return ""
+}
+
+// legacyConfigDBPath covers the directory rename under the config dir.
+func legacyConfigDBPath(cfg string) string {
+	if _, err := os.Stat(filepath.Join(cfg, "reqbox", "reqbox.db")); err == nil {
+		return ""
+	}
+	old := filepath.Join(cfg, "apimock", "apimock.db")
+	if _, err := os.Stat(old); err == nil {
+		return old
+	}
+	return ""
 }
 
 // isTempDir reports whether dir sits inside the OS temp directory, including
@@ -226,5 +264,20 @@ func envOr(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
 	}
+	// Honour the pre-rename variable too, so a deployment whose start script
+	// still says APIMOCK_* keeps working. The current name wins when both are set.
+	if legacy, ok := legacyEnvAlias[key]; ok {
+		if v := os.Getenv(legacy); v != "" {
+			return v
+		}
+	}
 	return fallback
+}
+
+// legacyEnvAlias maps current variables to their pre-rename names.
+var legacyEnvAlias = map[string]string{
+	"REQBOX_ADDR":   "APIMOCK_ADDR",
+	"REQBOX_DB":     "APIMOCK_DB",
+	"REQBOX_STATIC": "APIMOCK_STATIC",
+	"REQBOX_TOKEN":  "APIMOCK_TOKEN",
 }

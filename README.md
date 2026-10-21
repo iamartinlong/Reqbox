@@ -1,6 +1,6 @@
-# ApiMock
+# Reqbox
 
-> **Naming note.** The Go module, binary and default data path use `apimock`.
+> **Naming note.** The Go module, binary and default data path use `reqbox`.
 > The repository is currently named `SuperGet`, which does not match. A rename
 > is deliberately deferred until the open questions in
 > [docs/DECISIONS.md](docs/DECISIONS.md#naming) are settled.
@@ -46,8 +46,8 @@ and a couple of mock endpoints, without standing up a whole platform.
 ## Running it
 
 ```bash
-go build -o apimock ./cmd/apimock
-./apimock
+go build -o reqbox ./cmd/reqbox
+./reqbox
 ```
 
 Then open <http://localhost:5178>.
@@ -56,13 +56,13 @@ Flags (each also has an environment variable):
 
 | Flag        | Env              | Default                     | Meaning                              |
 | ----------- | ---------------- | --------------------------- | ------------------------------------ |
-| `-addr`     | `APIMOCK_ADDR`   | `:5178`                     | Listen address                       |
-| `-db`       | `APIMOCK_DB`     | `./data/apimock.db`         | SQLite file (created if missing)     |
-| `-static`   | `APIMOCK_STATIC` | —                           | Serve the UI from a directory        |
+| `-addr`     | `REQBOX_ADDR`   | `:5178`                     | Listen address                       |
+| `-db`       | `REQBOX_DB`     | `./data/reqbox.db`         | SQLite file (created if missing)     |
+| `-static`   | `REQBOX_STATIC` | —                           | Serve the UI from a directory        |
 | `-verbose`  | —                | off                         | Log every request                    |
 | `-version`  | —                | —                           | Print the version and exit           |
 
-The database path defaults to `data/apimock.db` next to the binary when that
+The database path defaults to `data/reqbox.db` next to the binary when that
 directory is writable; otherwise it falls back to the OS config directory. The
 schema migrates itself on start, so upgrades never need a manual step.
 
@@ -78,15 +78,15 @@ pnpm build          # writes web/dist
 
 # 2. build the binary (the UI is embedded from web/dist)
 cd ..
-go build -ldflags "-s -w -X apimock/internal/server.Version=0.1.0" -o apimock ./cmd/apimock
+go build -ldflags "-s -w -X reqbox/internal/server.Version=0.1.0" -o reqbox ./cmd/reqbox
 ```
 
 Cross-compiling works because the SQLite driver is pure Go:
 
 ```bash
-GOOS=linux   GOARCH=amd64 go build -o apimock-linux   ./cmd/apimock
-GOOS=darwin  GOARCH=arm64 go build -o apimock-darwin  ./cmd/apimock
-GOOS=windows GOARCH=amd64 go build -o apimock.exe     ./cmd/apimock
+GOOS=linux   GOARCH=amd64 go build -o reqbox-linux   ./cmd/reqbox
+GOOS=darwin  GOARCH=arm64 go build -o reqbox-darwin  ./cmd/reqbox
+GOOS=windows GOARCH=amd64 go build -o reqbox.exe     ./cmd/reqbox
 ```
 
 `scripts/build.ps1` and `scripts/build.sh` do the whole sequence, including the
@@ -98,7 +98,7 @@ Two terminals. The Vite dev server proxies `/api` to the Go server, so hot
 reload works against the real backend:
 
 ```bash
-go run ./cmd/apimock            # backend on :5178
+go run ./cmd/reqbox            # backend on :5178
 cd web && pnpm dev              # UI on :5173, proxying to :5178
 ```
 
@@ -108,7 +108,7 @@ explaining that the UI was not embedded.
 ## Layout
 
 ```
-cmd/apimock/          entry point, flags, graceful shutdown
+cmd/reqbox/          entry point, flags, graceful shutdown
 embed.go              //go:embed of web/dist
 internal/store/       SQLite schema, migrations, and queries
 internal/runner/      template resolution, HTTP execution, curl rendering
@@ -129,7 +129,7 @@ docs/
 
 ## Naming
 
-The Go module, binary and default data path use `apimock`. The repository is
+The Go module, binary and default data path use `reqbox`. The repository is
 currently named `SuperGet`, which does not match. A rename is intentionally
 deferred; see [docs/DECISIONS.md](docs/DECISIONS.md#naming) for the
 reasoning and [docs/TODO.md](docs/TODO.md#p1) for the full list of what it touches.

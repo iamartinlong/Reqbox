@@ -1,6 +1,6 @@
-// Package apimock embeds the compiled web client so a single binary can serve
+// Package reqbox embeds the compiled web client so a single binary can serve
 // the whole application.
-package apimock
+package reqbox
 
 import "embed"
 

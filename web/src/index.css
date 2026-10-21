@@ -6,7 +6,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
-  ApiMock — a workbench for HTTP.
+  Reqbox — a workbench for HTTP.
   The chrome is deliberately achromatic so that the one colour system that
   carries meaning, the HTTP method ramp, is the only saturated thing on screen.
 */

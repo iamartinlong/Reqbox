@@ -183,7 +183,7 @@ export function Sidebar({ onOpenEnvironments, onOpenSettings, onNavigate }: Prop
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'apimock-export.json'
+    a.download = 'reqbox-export.json'
     a.click()
     URL.revokeObjectURL(url)
     toast.success('Workspace exported')

@@ -1,6 +1,6 @@
-# ApiMock web client
+# Reqbox web client
 
-The React + TypeScript client for [ApiMock](../README.md). Vite builds it into
+The React + TypeScript client for [Reqbox](../README.md). Vite builds it into
 `dist/`, which the Go binary embeds — this folder is not deployed separately.
 
 ## Development
@@ -11,7 +11,7 @@ reload:
 
 ```bash
 # terminal 1, repo root
-go run ./cmd/apimock
+go run ./cmd/reqbox
 
 # terminal 2
 pnpm install

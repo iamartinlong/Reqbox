@@ -1,4 +1,4 @@
-module apimock
+module reqbox
 
 go 1.20
 

@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"apimock/internal/store"
+	"reqbox/internal/store"
 )
 
 func (a *api) handleListHistory(w http.ResponseWriter, r *http.Request) {
@@ -137,7 +137,7 @@ func (a *api) handleExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="apimock-export.json"`)
+	w.Header().Set("Content-Disposition", `attachment; filename="reqbox-export.json"`)
 	_ = json.NewEncoder(w).Encode(snap)
 }
 
@@ -148,7 +148,7 @@ func (a *api) handleImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if snap.Version == "" {
-		writeErr(w, http.StatusBadRequest, "not an ApiMock export file")
+		writeErr(w, http.StatusBadRequest, "not an Reqbox export file")
 		return
 	}
 	if err := a.store.Restore(snap); err != nil {

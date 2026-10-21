@@ -7,7 +7,7 @@ import { useTheme } from '@/lib/theme'
 import { Workspace } from '@/components/workspace'
 
 /**
- * ApiMock is one screen: a rail of saved work on the left, and on the right the
+ * Reqbox is one screen: a rail of saved work on the left, and on the right the
  * request you are shaping above the answer you got back. The fixed split is the
  * point — a request and its response are never more than a glance apart.
  */
@@ -43,7 +43,7 @@ export default function App() {
         <header className="hairline-b flex h-10 shrink-0 items-center gap-3 bg-chrome px-3">
           <div className="flex items-center gap-2">
             <Mark />
-            <span className="text-[13px] font-semibold tracking-tight">ApiMock</span>
+            <span className="text-[13px] font-semibold tracking-tight">Reqbox</span>
             <span className="mono rounded border border-border/70 px-1 text-[9.5px] tracking-wider text-muted-foreground">
               LOCAL
             </span>

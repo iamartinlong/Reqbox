@@ -1,7 +1,7 @@
 package server
 
 import (
-	"apimock/internal/logging"
+	"reqbox/internal/logging"
 	"bytes"
 	"encoding/json"
 	"io"
@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"apimock/internal/store"
+	"reqbox/internal/store"
 )
 
 func newTestServer(t *testing.T) (http.Handler, *store.Store) {

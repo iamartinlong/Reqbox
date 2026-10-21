@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"apimock/internal/store"
+	"reqbox/internal/store"
 )
 
 // Opts tunes a single call. Zero values fall back to defaults.
@@ -323,7 +323,7 @@ func (e *Executor) Run(ctx context.Context, r store.Request, vars map[string]str
 		req.Header.Set("Accept", "*/*")
 	}
 	if req.Header.Get("User-Agent") == "" {
-		req.Header.Set("User-Agent", "ApiMock/1.0")
+		req.Header.Set("User-Agent", "Reqbox/1.0")
 	}
 	ApplyAuth(req, r, vars)
 

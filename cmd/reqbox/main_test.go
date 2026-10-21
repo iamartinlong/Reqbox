@@ -11,7 +11,7 @@ func TestIsTempDir(t *testing.T) {
 	if !isTempDir(os.TempDir()) {
 		t.Errorf("the temp root itself should count as temporary: %s", os.TempDir())
 	}
-	if !isTempDir(filepath.Join(os.TempDir(), "apimock-ship")) {
+	if !isTempDir(filepath.Join(os.TempDir(), "reqbox-ship")) {
 		t.Error("a folder inside temp should count as temporary")
 	}
 
@@ -52,7 +52,7 @@ func TestDisplayURL(t *testing.T) {
 }
 
 func TestEnvOr(t *testing.T) {
-	const key = "APIMOCK_TEST_VALUE"
+	const key = "REQBOX_TEST_VALUE"
 	t.Setenv(key, "")
 	if got := envOr(key, "fallback"); got != "fallback" {
 		t.Errorf("empty env should fall back, got %q", got)

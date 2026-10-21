@@ -1,7 +1,7 @@
 package server
 
 import (
-	"apimock/internal/logging"
+	"reqbox/internal/logging"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"strings"
 
-	"apimock/internal/store"
+	"reqbox/internal/store"
 )
 
 // SettingAuthToken is the settings key holding the SHA-256 of the access token.
@@ -26,7 +26,7 @@ const SettingAuthToken = "authTokenHash"
 // SessionCookie is the cookie the browser carries after presenting the token
 // once. It holds the same hash rather than a separate secret: there is nothing
 // to gain from a second credential, and one value is one thing to rotate.
-const SessionCookie = "apimock_session"
+const SessionCookie = "reqbox_session"
 
 // AuthMode describes how the server authenticates API callers.
 type AuthMode int
@@ -217,7 +217,7 @@ func (a Auth) guard(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		w.Header().Set("WWW-Authenticate", `Bearer realm="apimock"`)
+		w.Header().Set("WWW-Authenticate", `Bearer realm="reqbox"`)
 		writeErr(w, http.StatusUnauthorized, "missing or invalid API token")
 	})
 }

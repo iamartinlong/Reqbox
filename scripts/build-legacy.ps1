@@ -96,8 +96,8 @@ if (-not (Test-Path (Join-Path $root "web/dist/index.html"))) {
 }
 
 # --- binary ------------------------------------------------------------------
-$ldflags = "-s -w -X apimock/internal/server.Version=$Version"
-$out = Join-Path $dist "apimock-win-legacy-amd64.exe"
+$ldflags = "-s -w -X reqbox/internal/server.Version=$Version"
+$out = Join-Path $dist "reqbox-win-legacy-amd64.exe"
 
 Write-Host "==> building $out"
 Push-Location $root
@@ -105,7 +105,7 @@ try {
     $env:CGO_ENABLED = "0"
     $env:GOOS = "windows"
     $env:GOARCH = "amd64"
-    & $goExe build -trimpath -ldflags $ldflags -o $out ./cmd/apimock
+    & $goExe build -trimpath -ldflags $ldflags -o $out ./cmd/reqbox
     if ($LASTEXITCODE -ne 0) { throw "build failed" }
 }
 finally {

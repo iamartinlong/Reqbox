@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"apimock/internal/logging"
-	"apimock/internal/store"
+	"reqbox/internal/logging"
+	"reqbox/internal/store"
 )
 
 // newAuthServer builds a handler with auth enabled and returns the token.

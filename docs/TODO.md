@@ -12,7 +12,7 @@
 
 ### [ ] 项目改名（阻塞其他改名工作）
 
-**现状**：项目、Go module、二进制、环境变量、数据库路径全部叫 `apimock`；
+**现状**：项目、Go module、二进制、环境变量、数据库路径全部叫 `reqbox`；
 远端仓库叫 `SuperGet`（随手取的）。三者不一致。
 
 **为什么现在不做**：改名是破坏性改动，会同时影响 module 路径、二进制名、
@@ -38,7 +38,7 @@
 **三个方案，按代价从低到高**：
 
 1. **仅改仓库名**（零风险，推荐先做）
-   只在 Gitea 上把 `SuperGet` 改成目标名，代码继续叫 `apimock`。
+   只在 Gitea 上把 `SuperGet` 改成目标名，代码继续叫 `reqbox`。
    不产生任何破坏。
 
 2. **只改展示名**
@@ -55,28 +55,28 @@
 # 1. Go module 与全部内部 import
 go mod edit -module <name>
 # 然后替换所有 internal import 前缀：
-#   "apimock/internal/..."  ->  "<name>/internal/..."
+#   "reqbox/internal/..."  ->  "<name>/internal/..."
 
 # 2. 目录改名
-#   cmd/apimock/  ->  cmd/<name>/
+#   cmd/reqbox/  ->  cmd/<name>/
 
 # 3. 二进制与构建产物名
 #   scripts/build.ps1、scripts/build.sh 里的 -o 文件名
-#   .gitignore 里的 /apimock、/apimock.exe
+#   .gitignore 里的 /reqbox、/reqbox.exe
 
 # 4. 运行时标识
-#   环境变量 APIMOCK_ADDR / APIMOCK_DB / APIMOCK_STATIC / APIMOCK_DEV
+#   环境变量 REQBOX_ADDR / REQBOX_DB / REQBOX_STATIC / REQBOX_DEV
 #     -> <NAME>_*
-#   User-Agent "ApiMock/1.0"  (internal/runner/runner.go)
-#   导出文件名 "apimock-export.json"（服务端与前端各一处）
+#   User-Agent "Reqbox/1.0"  (internal/runner/runner.go)
+#   导出文件名 "reqbox-export.json"（服务端与前端各一处）
 
 # 5. 前端存储键
-#   localStorage "apimock-theme"、"apimock-session"
+#   localStorage "reqbox-theme"、"reqbox-session"
 #   （改了会让老用户丢主题与发送设置，见下方迁移方案）
 
 # 6. 默认数据路径
-#   <exe>/data/apimock.db
-#   ~/.config/apimock/apimock.db
+#   <exe>/data/reqbox.db
+#   ~/.config/reqbox/reqbox.db
 
 # 7. 文档与 UI 文案
 #   README.md、web/README.md、web/index.html <title>、
@@ -86,7 +86,7 @@ go mod edit -module <name>
 **必须一并处理：数据迁移。**
 默认库路径随名字变化后，老用户升级会「看不见」自己的数据。需要：
 
-- 启动时若新路径不存在、而旧路径 `apimock.db` 存在，自动改用它并打印提示，
+- 启动时若新路径不存在、而旧路径 `reqbox.db` 存在，自动改用它并打印提示，
   或直接复制过去；
 - localStorage 键名变更时，读取不到旧键就回退读旧键一次。
 

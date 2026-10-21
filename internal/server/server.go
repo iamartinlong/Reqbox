@@ -1,7 +1,7 @@
 package server
 
 import (
-	"apimock/internal/logging"
+	"reqbox/internal/logging"
 	"encoding/json"
 	"errors"
 	"io"
@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"apimock/internal/runner"
-	"apimock/internal/store"
+	"reqbox/internal/runner"
+	"reqbox/internal/store"
 )
 
 // api bundles the dependencies shared by all handlers.

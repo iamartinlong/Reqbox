@@ -1,7 +1,7 @@
 package server
 
 import (
-	"apimock/internal/logging"
+	"reqbox/internal/logging"
 	"io/fs"
 	"net/http"
 	"net/url"
@@ -12,8 +12,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"apimock/internal/runner"
-	"apimock/internal/store"
+	"reqbox/internal/runner"
+	"reqbox/internal/store"
 )
 
 // Version is stamped at build time via -ldflags.
@@ -183,9 +183,9 @@ func spaHandler(staticFS fs.FS, dev bool) http.Handler {
 }
 
 const devPlaceholder = `<!doctype html>
-<html><head><meta charset="utf-8"><title>ApiMock</title></head>
+<html><head><meta charset="utf-8"><title>Reqbox</title></head>
 <body style="font:14px/1.6 ui-monospace,monospace;padding:3rem;background:#0b0c0e;color:#e6e6e6">
-<h1>ApiMock API is running</h1>
+<h1>Reqbox API is running</h1>
 <p>The web build is not embedded in this binary.</p>
 <p>Run <code>pnpm dev</code> inside <code>web/</code>, or rebuild with <code>go build -tags web</code>.</p>
 </body></html>`

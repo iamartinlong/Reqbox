@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Build ApiMock end to end: web client, then the Go binary that embeds it.
+# Build Reqbox end to end: web client, then the Go binary that embeds it.
 #
 #   ./scripts/build.sh                 # current platform
 #   ./scripts/build.sh 0.2.0           # with an explicit version
@@ -32,24 +32,24 @@ if [ ! -f "$ROOT/web/dist/index.html" ]; then
   exit 1
 fi
 
-LDFLAGS="-s -w -X apimock/internal/server.Version=$VERSION"
+LDFLAGS="-s -w -X reqbox/internal/server.Version=$VERSION"
 export CGO_ENABLED=0
 
 build() {
   os="$1"; arch="$2"; out="$3"
   echo "==> building $out"
-  GOOS="$os" GOARCH="$arch" go build -trimpath -ldflags "$LDFLAGS" -o "$DIST/$out" ./cmd/apimock
+  GOOS="$os" GOARCH="$arch" go build -trimpath -ldflags "$LDFLAGS" -o "$DIST/$out" ./cmd/reqbox
 }
 
 cd "$ROOT"
 if [ -n "$ALL" ]; then
-  build linux   amd64 apimock-linux-amd64
-  build linux   arm64 apimock-linux-arm64
-  build darwin  amd64 apimock-darwin-amd64
-  build darwin  arm64 apimock-darwin-arm64
-  build windows amd64 apimock-windows-amd64.exe
+  build linux   amd64 reqbox-linux-amd64
+  build linux   arm64 reqbox-linux-arm64
+  build darwin  amd64 reqbox-darwin-amd64
+  build darwin  arm64 reqbox-darwin-arm64
+  build windows amd64 reqbox-windows-amd64.exe
 else
-  build "$(go env GOOS)" "$(go env GOARCH)" apimock
+  build "$(go env GOOS)" "$(go env GOARCH)" reqbox
 fi
 
 echo "==> done. Artifacts in $DIST"

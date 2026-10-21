@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
+import { readMigrated } from './storage'
 
 type Theme = 'dark' | 'light'
 
-const STORAGE_KEY = 'apimock-theme'
+const STORAGE_KEY = 'reqbox-theme'
 
 function readInitial(): Theme {
   if (typeof window === 'undefined') return 'dark'
-  const stored = window.localStorage.getItem(STORAGE_KEY)
+  const stored = readMigrated(STORAGE_KEY)
   if (stored === 'dark' || stored === 'light') return stored
   return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
 }

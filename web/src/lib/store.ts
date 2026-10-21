@@ -104,7 +104,7 @@ export const useWorkspace = create<WorkspaceState>()(
       setSidebarTab: (tab) => set({ sidebarTab: tab }),
     }),
     {
-      name: 'apimock-session',
+      name: 'reqbox-session',
       partialize: (state) => ({ options: state.options }),
     },
   ),

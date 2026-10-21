@@ -1,7 +1,7 @@
 # build output
 /dist/
-/apimock
-/apimock.exe
+/reqbox
+/reqbox.exe
 
 # local database and runtime data
 /data/

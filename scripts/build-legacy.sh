@@ -86,12 +86,12 @@ if [ ! -f "$ROOT/web/dist/index.html" ]; then
 fi
 
 # --- binary ------------------------------------------------------------------
-LDFLAGS="-s -w -X apimock/internal/server.Version=$VERSION"
-OUT="$DIST/apimock-win-legacy-amd64.exe"
+LDFLAGS="-s -w -X reqbox/internal/server.Version=$VERSION"
+OUT="$DIST/reqbox-win-legacy-amd64.exe"
 
 echo "==> building $OUT"
 cd "$ROOT"
-CGO_ENABLED=0 GOOS=windows GOARCH=amd64 "$GO_EXE" build -trimpath -ldflags "$LDFLAGS" -o "$OUT" ./cmd/apimock
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 "$GO_EXE" build -trimpath -ldflags "$LDFLAGS" -o "$OUT" ./cmd/reqbox
 
 # --- verify ------------------------------------------------------------------
 # A wrong toolchain still produces a working-looking binary, so check the PE

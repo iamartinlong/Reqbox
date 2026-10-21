@@ -6,12 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark light" />
     <meta name="description" content="A local API workbench: save requests, run them, publish mocks." />
-    <title>ApiMock</title>
+    <title>Reqbox</title>
     <script>
       // Apply the saved theme before first paint so there is no flash.
       (function () {
         try {
-          var saved = localStorage.getItem('apimock-theme');
+          var saved = localStorage.getItem('reqbox-theme') || localStorage.getItem('apimock-theme');
           var dark = saved ? saved === 'dark' : !window.matchMedia('(prefers-color-scheme: light)').matches;
           document.documentElement.classList.toggle('dark', dark);
           document.documentElement.style.colorScheme = dark ? 'dark' : 'light';

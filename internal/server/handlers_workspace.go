@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"apimock/internal/store"
+	"reqbox/internal/store"
 )
 
 func (a *api) handleListCollections(w http.ResponseWriter, r *http.Request) {

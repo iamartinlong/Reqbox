@@ -18,8 +18,8 @@ SQLite 驱动是纯 Go 实现（`modernc.org/sqlite`），**不需要 cgo**，�
 ## 最短路径：直接跑
 
 ```bash
-go build -o apimock ./cmd/apimock
-./apimock
+go build -o reqbox ./cmd/reqbox
+./reqbox
 ```
 
 打开 <http://localhost:5178>。
@@ -37,7 +37,7 @@ pnpm build          # 输出到 web/dist，会被 go:embed 打进二进制
 
 # 2. 后端
 cd ..
-go build -ldflags "-s -w -X apimock/internal/server.Version=0.1.0" -o apimock ./cmd/apimock
+go build -ldflags "-s -w -X reqbox/internal/server.Version=0.1.0" -o reqbox ./cmd/reqbox
 ```
 
 或用脚本一次做完（含版本号与跨平台矩阵）：
@@ -60,7 +60,7 @@ go build -ldflags "-s -w -X apimock/internal/server.Version=0.1.0" -o apimock ./
 调用的是真实后端：
 
 ```bash
-go run ./cmd/apimock        # 后端 :5178
+go run ./cmd/reqbox        # 后端 :5178
 cd web && pnpm dev          # 前端 :5173（代理到 :5178）
 ```
 
@@ -106,7 +106,7 @@ CGO_ENABLED=1 go test -race ./...
 ## 目录结构
 
 ```
-cmd/apimock/        入口：命令行参数、优雅关闭
+cmd/reqbox/        入口：命令行参数、优雅关闭
 embed.go            //go:embed web/dist
 internal/store/     SQLite schema、迁移、查询
 internal/runner/    模板解析、HTTP 执行、curl 渲染
@@ -120,7 +120,7 @@ docs/               本目录
 
 ## 几个容易踩的点
 
-**数据库位置。** 默认在二进制旁边的 `data/apimock.db`；若二进制位于临时目录
+**数据库位置。** 默认在二进制旁边的 `data/reqbox.db`；若二进制位于临时目录
 （如 `go run` 的构建目录），会退回到系统配置目录。用 `-db` 显式指定可避免
 意外。
 

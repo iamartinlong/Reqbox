@@ -9,8 +9,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"apimock/internal/runner"
-	"apimock/internal/store"
+	"reqbox/internal/runner"
+	"reqbox/internal/store"
 )
 
 // execOptions mirrors the UI's send settings. The booleans are pointers so an

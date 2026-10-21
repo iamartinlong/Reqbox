@@ -2,7 +2,7 @@
 
 # Hushu 接口导入说明
 
-从 Java 项目 `YiwumsHushuApi` 提取的接口，已作为 **Hushu** 合集导入 ApiMock。
+从 Java 项目 `YiwumsHushuApi` 提取的接口，已作为 **Hushu** 合集导入 Reqbox。
 
 - 源项目：`E:\Project\5-义乌有线\projects\YiwumsHushuApi`
 - 生成脚本：[`scripts/import-hushu.ps1`](../scripts/import-hushu.ps1)
@@ -47,7 +47,7 @@ hushuBase = http://hushu-host:8080
 | 签名 | 请求体 MD5 再转十六进制大写，放 `sign` 头 |
 
 **因此导入的是 `/ywapi/*` 这一层**，理由是：直接调 OSP 平台需要先取 token、
-再对报文做 AES 加解密和签名 —— ApiMock 目前没有脚本或前置请求能力，硬编码
+再对报文做 AES 加解密和签名 —— Reqbox 目前没有脚本或前置请求能力，硬编码
 这些既不可行也不该把密钥写进请求定义。
 
 导入代理层则开箱即用：由 Java 服务替我们完成鉴权与加解密。
@@ -102,7 +102,7 @@ curl -X POST http://127.0.0.1:5178/api/import `
   --data-binary "@scripts/hushu-import.json"
 ```
 
-**注意**：导入是**整体替换**整个工作区（这是 ApiMock 现有语义）。如果工作区里
+**注意**：导入是**整体替换**整个工作区（这是 Reqbox 现有语义）。如果工作区里
 已有其他请求，先导出备份：
 
 ```powershell

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"apimock/internal/store"
+	"reqbox/internal/store"
 )
 
 func TestResolve(t *testing.T) {

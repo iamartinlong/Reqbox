@@ -2,7 +2,7 @@
 # 源：E:\Project\5-义乌有线\projects\YiwumsHushuApi
 # 该 Java 服务是代理层：/ywapi/* 接收业务参数，内部换 OAuth2 token
 # 并做 AES 加解密后转发到 OSP 平台。因此这里导入的是代理层端点，
-# 即 ApiMock 可直接调用的那一层。
+# 即 Reqbox 可直接调用的那一层。
 
 $ErrorActionPreference = "Stop"
 $now = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ")

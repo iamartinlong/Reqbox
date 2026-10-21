@@ -222,7 +222,7 @@ export function Workspace() {
             <MenuIcon className="size-4" />
           </Button>
           <span className="mono truncate text-[11px] text-muted-foreground">
-            {draft?.name || 'ApiMock'}
+            {draft?.name || 'Reqbox'}
           </span>
         </div>
         {loading ? (
