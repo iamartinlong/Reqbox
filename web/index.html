@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="description" content="A local API workbench: save requests, run them, publish mocks." />
+    <title>Reqbox</title>
+    <script>
+      // Apply the saved theme before first paint so there is no flash.
+      //
+      // This runs before the bundle loads, so it cannot use the shared helper.
+      // It reads the pre-rename key too: without that, an upgrading user sees a
+      // one-frame flash of the wrong theme on every load until they toggle.
+      (function () {
+        try {
+          var saved = localStorage.getItem('reqbox-theme') || localStorage.getItem('apimock-theme');
+          var dark = saved ? saved === 'dark' : !window.matchMedia('(prefers-color-scheme: light)').matches;
+          document.documentElement.classList.toggle('dark', dark);
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

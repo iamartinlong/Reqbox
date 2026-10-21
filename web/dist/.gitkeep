@@ -1,0 +1,5 @@
+This folder holds the compiled web client.
+
+`pnpm build` in `web/` writes index.html and assets/ here, and the Go binary
+embeds them at compile time. The file you are reading only exists so that
+`go:embed web/dist` resolves on a fresh clone, before the first web build.
