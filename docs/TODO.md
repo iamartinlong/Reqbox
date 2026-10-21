@@ -111,13 +111,17 @@
 **验收**：引入 Vitest + Testing Library，至少覆盖「新建 → 保存 → 发送 →
 发布」主流程，以及响应区标签切换。
 
-### [ ] 并发安全缺少 race detector 验证　`0.2 天`
+### [~] 并发安全缺少 race detector 验证　`0.2 天`　已接入 CI，待首次运行确认
 
-`go test -race` 需要 cgo，当前环境无 gcc。现有并发结论来自 20 并发执行 /
+`go test -race` 需要 cgo，开发机无 gcc。现有并发结论来自 20 并发执行 /
 15 并发写入的手工实测。
 
 **验收**：在有 gcc 的机器（或 Linux CI）跑 `CGO_ENABLED=1 go test -race ./...`
 并全绿。
+
+**进展（2026-10-21）**：`.github/workflows/ci.yml` 的 `Go` 任务在
+`ubuntu-latest` 上已加 `go test -race ./...`，GitHub 的 Linux 运行器自带 gcc。
+首次 CI 运行全绿后可改为 `[x]`；若报出真实竞态，则另开修复项。
 
 ### [x] 历史快照中的凭证为明文　`方案 A 已完成`　方案 B 已决定**暂不实现**
 

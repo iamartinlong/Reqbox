@@ -106,6 +106,10 @@ pnpm build
 ./scripts/build.sh               # 类 Unix
 ```
 
+CI（`.github/workflows/ci.yml`）会把这些各跑一遍，额外两项本机做不到：
+Windows 上的 Go 测试，以及 Linux 上的 `go test -race`。推送前想本地复现，
+见 [DEVELOPMENT.md](./DEVELOPMENT.md) 的「CI 会跑什么」。
+
 ---
 
 ## 六、容易踩的坑
@@ -175,6 +179,7 @@ shadcn/ui 的 `data-active` / `data-horizontal` 变体**不是内置的**。
 | -- | ---- |
 | Go 测试 | 78 通过 |
 | 前端测试 | 112 通过 |
+| CI | `.github/workflows/ci.yml`，Linux + Windows 上的 Go 测试（含 `-race`）、前端测试与二进制冒烟（**待首次运行**） |
 | `tsc` / `lint` / `vet` | 干净 |
 | 上线审计 | 已完成，见 [AUDIT.md](./AUDIT.md) |
 | 已知阻塞项 | 无 |

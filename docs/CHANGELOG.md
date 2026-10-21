@@ -114,6 +114,31 @@
 - 请求头捕获：`Content-Type`、`Accept`、`User-Agent`、`Authorization` 这些
   由程序自动添加的头，此前在界面上完全看不到。
 
+- **GitHub Actions 持续集成（`.github/workflows/ci.yml`）。** 之前所有验证都
+  只在本机跑，没有 CI；而「本机没有 gcc」正是 `-race` 一直没做的原因。
+  三个并行任务：
+
+  | 任务 | 内容 |
+  | ---- | ---- |
+  | `Go` | Linux + Windows 矩阵：`gofmt` 检查、`go vet`、`go test`；Linux 另跑 `-race` |
+  | `Web` | `pnpm install --frozen-lockfile`、`tsc -b`、`oxlint`、`vitest` |
+  | `Build` | 先 `pnpm build` 再 `go build`（验证 `go:embed` 真有内容），启动二进制打 `/api/health` 与 `/`，上传产物 |
+
+  几处刻意的选择：
+
+  - **Windows 也在矩阵里。** `internal/store/acl_windows_test.go` 带
+    `//go:build windows`，DACL 收紧的代码在 Linux 上**一条测试都不会跑**，
+    而那正是保护明文凭据的部分。
+  - **`-race` 放在 Linux。** 它需要 cgo 与 C 编译器，本机两者都没有。
+    Windows 上跑需要 mingw 且不稳定，故只在 Linux 跑。
+  - **`gofmt` 只在 Linux 检查。** 提交内容（blob）是 LF，但 Windows 检出后
+    可能是 CRLF，`gofmt` 会误报整棵树。
+  - **`Build` 里的冒烟测试**会真正启动二进制并请求 `/api/health` 与 `/`。
+    只编译不启动，抓不到 `go:embed` 落到占位页、端口默认值坏了、数据库建不
+    出来这类问题。
+  - 前端流水线里没有 `pnpm build`：`tsc -b` 已能暴露类型问题，真正的构建
+    放在 `Build` 任务里做一次，避免重复。
+
 ### 决定
 
 - **加密落盘（方案 B）暂不实现。** 凭据仍以明文存于数据库，靠文件权限与

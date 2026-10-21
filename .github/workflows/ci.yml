@@ -1,0 +1,174 @@
+# Verification for the main branch: format, vet, tests (with the race
+# detector), the front-end suite, and a build that boots the real binary.
+#
+# Deliberately a single workflow with three independent jobs: a failure should
+# name what broke (Go on which OS, the web suite, the packaged binary) without
+# making the others wait.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: Go (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows is not decoration: the DACL tightening in internal/store has
+        # a //go:build windows test that never runs on Linux, and that code is
+        # what protects the plaintext credentials in the database.
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Linux only: the Windows runner may check files out with CRLF, which
+      # gofmt flags even though the committed blobs are LF.
+      - name: Check formatting
+        if: runner.os == 'Linux'
+        run: |
+          unformatted=$(gofmt -l cmd internal embed.go)
+          if [ -n "$unformatted" ]; then
+            echo "These files need gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./... -count=1
+
+      # Closes the long-standing "no race detector" gap: it needs cgo and a C
+      # compiler, neither of which existed on the development machine.
+      - name: Test with the race detector
+        if: runner.os == 'Linux'
+        env:
+          CGO_ENABLED: "1"
+        run: go test -race ./... -count=1
+
+  web:
+    name: Web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.5.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check
+        run: pnpm exec tsc -b
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+  build:
+    name: Build binary
+    needs: [go, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.5.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      # go:embed needs a real build here: on a fresh clone web/dist only has
+      # .gitkeep, so the binary would compile but serve a placeholder page.
+      - name: Build web client
+        working-directory: web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Build
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=0 go build -trimpath \
+            -ldflags "-s -w -X reqbox/internal/server.Version=ci" \
+            -o dist/reqbox ./cmd/reqbox
+          ./dist/reqbox -version
+
+      # Compiling is not the same as working: this catches a broken embed, a
+      # bad flag default or a database that cannot be created.
+      - name: Smoke test the binary
+        run: |
+          ./dist/reqbox -no-auth -addr 127.0.0.1:5199 -db "$RUNNER_TEMP/ci.db" > server.log 2>&1 &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+
+          ready=""
+          for _ in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:5199/api/health > health.json; then
+              ready="yes"
+              break
+            fi
+            sleep 0.5
+          done
+
+          cat server.log
+          if [ -z "$ready" ]; then
+            echo "the server never answered /api/health"
+            exit 1
+          fi
+
+          cat health.json
+          grep -q '"status":"ok"' health.json || { echo "health check failed"; exit 1; }
+
+          # Downloaded to a file rather than piped into grep: grep exits at the
+          # first match, curl then dies of SIGPIPE, and `pipefail` (on by
+          # default in these runners) turns that into a red step.
+          curl -fsS http://127.0.0.1:5199/ -o index.html
+          grep -q '<div id="root">' index.html \
+            || { echo "embedded web client missing from the binary"; exit 1; }
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: reqbox-linux-amd64
+          path: dist/reqbox
+          if-no-files-found: error
+          retention-days: 7

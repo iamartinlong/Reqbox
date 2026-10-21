@@ -70,7 +70,7 @@ cd web && pnpm dev          # 前端 :5173（代理到 :5178）
 
 ```bash
 go vet ./...        # 静态检查
-go test ./...       # 41 个测试
+go test ./...       # 78 个测试
 ```
 
 前端：
@@ -79,11 +79,32 @@ go test ./...       # 41 个测试
 cd web
 pnpm exec tsc -b    # 类型检查
 pnpm lint           # oxlint
+pnpm test           # 112 个测试
 ```
+
+### CI 会跑什么
+
+`.github/workflows/ci.yml` 在推送到 `main` 和所有 PR 上运行，三个并行任务：
+
+| 任务 | 内容 |
+| ---- | ---- |
+| `Go` | `gofmt` 检查、`go vet`、`go test`，Linux + Windows；Linux 额外 `go test -race` |
+| `Web` | `pnpm install --frozen-lockfile`、`tsc -b`、`oxlint`、`vitest` |
+| `Build` | `pnpm build` → `go build` → 启动二进制打 `/api/health` 和 `/` → 上传产物 |
+
+想在推送前复现 CI 的结果，按上表逐条执行即可；`-race` 那一步需要 C 编译器：
+
+```bash
+CGO_ENABLED=1 go test -race ./...
+```
+
+CI 的覆盖范围有意比本机验证宽两项：**Windows 上的 Go 测试**（DACL 收紧的
+测试带 `//go:build windows`，Linux 上不会执行）和 **`-race`**（本机没有
+gcc）。本机验证不能替代 CI，反过来也一样。
 
 ### 手工验证（自动化覆盖不到的部分）
 
-前端交互没有单元测试，涉及 UI 的改动需要手工确认：
+前端交互有单元测试覆盖主流程，但真实浏览器里的观感仍需手工确认：
 
 1. 新建请求 → 填 URL → SEND，能拿到响应
 2. 切换请求，响应区**不应**残留上一个结果
@@ -91,17 +112,6 @@ pnpm lint           # oxlint
 4. 发布 mock → 用 `curl` 访问 `/mock/{slug}` 能通
 5. 删除操作弹出的是**应用内**对话框，不是系统对话框
 6. 深/浅色主题切换正常
-
-### 关于 `go test -race`
-
-当前环境没有 gcc，`-race` 需要 cgo，无法运行。并发相关改动请在带 gcc 的
-机器或 Linux CI 上补跑：
-
-```bash
-CGO_ENABLED=1 go test -race ./...
-```
-
-这条已记入 [TODO.md](./TODO.md)。
 
 ## 目录结构
 
