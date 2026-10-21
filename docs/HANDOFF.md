@@ -179,7 +179,7 @@ shadcn/ui 的 `data-active` / `data-horizontal` 变体**不是内置的**。
 | -- | ---- |
 | Go 测试 | 78 通过 |
 | 前端测试 | 112 通过 |
-| CI | `.github/workflows/ci.yml`，Linux + Windows 上的 Go 测试（含 `-race`）、前端测试与二进制冒烟（**待首次运行**） |
+| CI | `.github/workflows/ci.yml`，Linux + Windows 上的 Go 测试（含 `-race`）、前端测试与二进制冒烟（[run #1 全绿](https://github.com/iamartinlong/Reqbox/actions/runs/39611849740)） |
 | `tsc` / `lint` / `vet` | 干净 |
 | 上线审计 | 已完成，见 [AUDIT.md](./AUDIT.md) |
 | 已知阻塞项 | 无 |
