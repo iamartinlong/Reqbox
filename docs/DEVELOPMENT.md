@@ -54,6 +54,41 @@ go build -ldflags "-s -w -X reqbox/internal/server.Version=0.1.0" -o reqbox ./cm
 
 产物在 `dist/`。
 
+## 发版（真正的 CD）
+
+推送一个 `v*` 形式的 tag 即可：CI 会构建前端、重跑测试，然后由 GoReleaser
+生成六平台压缩包与校验和并创建 GitHub Release。
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+| 事项 | 说明 |
+| ---- | ---- |
+| 产物 | `reqbox_<版本>_<os>_<arch>.tar.gz`，Windows 为 `.zip`，附 `checksums.txt` |
+| 平台 | linux / darwin / windows × amd64 / arm64；`CGO_ENABLED=0`（SQLite 是纯 Go 实现） |
+| 内容 | 二进制 + `LICENSE` + `README.md` |
+| 版本号 | tag 名去掉 `v` 注入 `server.Version`，`reqbox -version` 可查 |
+| 预发布 | tag 名带 `-rc1` 之类时自动标为 prerelease |
+| 配置 | `.goreleaser.yaml`；工作流在 `.github/workflows/release.yml` |
+
+**先演练再发。** `Release` 工作流也支持手动触发（Actions 页面 → Run
+workflow），那种模式下 GoReleaser 加 `--snapshot`：只构建、不发布，产物
+仍会作为 workflow artifact 上传，用来确认配置没写坏。
+
+**本地只想看产物：**
+
+```bash
+cd web && pnpm build && cd ..
+goreleaser release --snapshot --clean
+```
+
+`go:embed` 读的是 `web/dist` 的当前内容，所以**必须先构建前端**，否则包里
+是「前端未内嵌」的占位页。工作流里已包含这一步。
+
+发版前建议先确认 CI 在要打 tag 的那个提交上是绿的。
+
 ## 前端开发（热更新）
 
 两个终端。Vite 会把 `/api` 代理到 Go 服务，因此前端改动实时生效，同时
@@ -126,6 +161,8 @@ web/src/
   components/ui/    shadcn/ui 基础组件（生成，通常不改）
   lib/              API 客户端、类型、格式化、主题、zustand store
 docs/               本目录
+.github/workflows/  ci.yml（每次推送/PR）与 release.yml（tag）
+.goreleaser.yaml    发版产物配置
 ```
 
 ## 几个容易踩的点

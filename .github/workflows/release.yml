@@ -1,0 +1,89 @@
+# Release pipeline: a version tag becomes a GitHub Release with prebuilt
+# binaries, so nobody has to have Go installed to use Reqbox.
+#
+#   git tag v0.2.0 && git push origin v0.2.0
+#
+# Anything that looks like a release candidate (v0.2.0-rc1) is published as a
+# prerelease; the `prerelease: auto` setting in .goreleaser.yaml decides that
+# from the tag name.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  # Manual runs build the archives without publishing, to check this file after
+  # editing it: a dispatch never creates a release.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # GoReleaser builds the changelog from the commits since the previous
+          # tag, so it needs the full history rather than a shallow clone.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # The binary embeds web/dist. Without this step the release would ship
+      # the "front end not built" placeholder page.
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.5.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Build web client
+        working-directory: web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      # A tag must not publish artifacts that would fail CI: the tests run
+      # here too, before anything is uploaded.
+      - name: Test before publishing
+        run: go test ./... -count=1
+
+      - name: GoReleaser
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          # On a tag this publishes; on workflow_dispatch it only builds. The
+          # `--clean` drops leftovers from a previous attempt in the same job.
+          args: >-
+            release --clean
+            ${{ github.event_name == 'workflow_dispatch' && '--snapshot' || '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Whatever happened, keep the archives. If publishing failed the artifacts
+      # are still downloadable, and a maintainer can upload them by hand.
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: release-artifacts
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+          if-no-files-found: warn
+          retention-days: 7

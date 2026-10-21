@@ -5,7 +5,7 @@
 
 ---
 
-## [未发布]
+## [0.2.0] — 2026-10-21
 
 ### 新增
 
@@ -138,6 +138,35 @@
     出来这类问题。
   - 前端流水线里没有 `pnpm build`：`tsc -b` 已能暴露类型问题，真正的构建
     放在 `Build` 任务里做一次，避免重复。
+  - `Build` 任务还会跑 `goreleaser check`。发版配置写坏时，应该在改它的
+    那个 PR 上失败，而不是等到打 tag 才发现。
+
+- **发版自动化（`.github/workflows/release.yml` + `.goreleaser.yaml`）。**
+  推送 `v*` tag 即发布：构建前端 → 重跑测试 → GoReleaser 生成六平台
+  压缩包、`checksums.txt` 与 GitHub Release。
+
+  | 项 | 取值 |
+  | ---- | ---- |
+  | 平台 | linux / darwin / windows × amd64 / arm64 |
+  | 产物 | `.tar.gz`（Windows 为 `.zip`），内含二进制、`LICENSE`、`README.md` |
+  | 版本号 | tag 去掉 `v`，注入 `server.Version` |
+  | 预发布 | tag 形如 `v0.2.0-rc1` 时自动标 prerelease |
+
+  几个要点：
+
+  - **必须先构建前端**。`go:embed` 读的是 `web/dist` 的现状，不构建就会
+    把「前端未内嵌」占位页发出去。工作流把这一步放在最前面。
+  - **发版前重跑测试**。tag 可以打在 CI 没跑过的提交上，所以发布流程自己
+    再跑一遍 `go test`，失败则不出包。
+  - **`workflow_dispatch` 手动触发只做快照**（`--snapshot`）：构建但不发布，
+    用来验证配置；产物仍作为 workflow artifact 上传。
+  - **`fetch-depth: 0`**：GoReleaser 用「上一个 tag 之后的提交」生成变更说明，
+    浅克隆会导致 changelog 为空。
+  - `mod_timestamp` 设为提交时间，同一 tag 重复构建得到相同字节，
+    校验和不会无故变化。
+
+  实测（本地 `--snapshot`）：6 个包全部生成，Windows 包解开后
+  `reqbox.exe -version` 输出快照版本，启动后 `/api/health` 与内嵌前端均正常。
 
 ### 决定
 
@@ -223,4 +252,5 @@
 
 ## 未发布
 
-下一版本的内容见 [TODO.md](./TODO.md)。当前唯一待决策项是项目改名。
+下一版本的内容见 [TODO.md](./TODO.md)。0.2.0 已发布；SSE、Mock 转发请求体、
+链式调用与 WebSocket 仍在待办中。

@@ -117,6 +117,15 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
 
+      # Catches a broken .goreleaser.yaml on the PR that breaks it, rather than
+      # at tag time when the whole release would fail.
+      - name: Validate GoReleaser config
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: check
+
       # go:embed needs a real build here: on a fresh clone web/dist only has
       # .gitkeep, so the binary would compile but serve a placeholder page.
       - name: Build web client

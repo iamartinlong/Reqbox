@@ -1,0 +1,74 @@
+# Release configuration for GoReleaser. Triggered by .github/workflows/release.yml
+# on a version tag; also usable locally:
+#
+#   goreleaser release --snapshot --clean     # build everything, publish nothing
+#
+# The web client is NOT built here: go:embed reads whatever is in web/dist, so
+# the caller has to run `pnpm build` first (the workflow does, a local snapshot
+# needs it done by hand). Otherwise the archives would ship the placeholder page.
+version: 2
+
+project_name: reqbox
+
+before:
+  hooks:
+    - go mod verify
+
+builds:
+  - id: reqbox
+    main: ./cmd/reqbox
+    binary: reqbox
+    env:
+      - CGO_ENABLED=0
+    # The SQLite driver is pure Go (modernc.org/sqlite), which is why the
+    # matrix can be this wide without a C toolchain per platform.
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X reqbox/internal/server.Version={{ .Version }}
+    # Same embedded timestamp for every platform, so a rebuild of the same tag
+    # produces identical bytes and checksums stay stable.
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: reqbox
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^ci:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  draft: false
+  prerelease: auto
+  footer: |
+    **Install:** download the archive for your platform, unpack it, run `reqbox`,
+    and open the sign-in URL printed on startup.
+
+    The database and its plaintext credentials stay on the machine running it:
+    see the security notes in the README.

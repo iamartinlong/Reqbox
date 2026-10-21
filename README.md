@@ -58,6 +58,18 @@ and a couple of mock endpoints, without standing up a whole platform.
 
 ## Running it
 
+Prebuilt binaries for Linux, macOS and Windows (amd64 and arm64) are published
+on the [releases page](https://github.com/iamartinlong/Reqbox/releases). Unpack
+the archive for your platform and run the binary — nothing else is needed, the
+web client is embedded:
+
+```bash
+tar -xzf reqbox_0.2.0_linux_amd64.tar.gz     # or expand the .zip on Windows
+./reqbox
+```
+
+Or build it yourself:
+
 ```bash
 go build -o reqbox ./cmd/reqbox
 ./reqbox
@@ -242,9 +254,18 @@ The response carries the status, headers, body, timing, the resolved URL, and a
 ## Tests
 
 ```bash
-go test ./...          # backend: 74 tests
-cd web && pnpm test    # frontend: 101 tests
+go test ./...          # backend: 78 tests
+cd web && pnpm test    # frontend: 112 tests
 ```
+
+Both run on every push to `main` and every pull request via
+`.github/workflows/ci.yml` — on Linux and Windows for Go, with the race
+detector on Linux, plus a build that boots the real binary and checks the
+embedded UI is present.
+
+Releases are cut by tagging: `git tag v0.2.0 && git push origin v0.2.0` runs
+`.github/workflows/release.yml`, which builds the web client, runs the tests
+again, and hands the binaries to GoReleaser (config in `.goreleaser.yaml`).
 
 Backend covers template resolution, URL and body building, auth, timeouts,
 redirect handling, binary responses, curl rendering, the store CRUD paths,

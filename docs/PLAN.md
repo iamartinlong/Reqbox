@@ -18,9 +18,9 @@
 | 兼容分支 | `legacy/win2008r2`（Go 1.20，用于 2012 R2 及更早） |
 | Go 代码 | 20 文件 / 约 4050 行 |
 | 前端代码 | 35 文件 / 约 4547 行 |
-| Go 测试 | 47 个，全绿 |
-| 前端测试 | **无** |
-| 已知未决 | 项目改名 1 项 |
+| Go 测试 | 78 个，全绿 |
+| 前端测试 | 112 个，全绿 |
+| 已知未决 | 无（改名与仓库托管均已完成，CI 已接入） |
 
 ---
 
@@ -28,26 +28,27 @@
 
 目标：清掉阻塞项，让后续工作没有「名字还没定」这种悬而未决的前提。
 
-### 1.1 改名　✅ 已完成（代码），仓库迁移待办
+### 1.1 改名　✅ 已完成（代码 + 仓库托管）
 
 **代码改名已全部执行**：`apimock` → `reqbox`，44 个文件、142 处引用，
 含 module 路径、二进制、环境变量、数据路径、UI 与前端存储键。老数据通过
 回退逻辑自动沿用。详见 [TODO 的改名记录](./TODO.md#p1)。
 
-**仓库托管**：迁移到 GitHub，以全新状态发布（不带旧历史），由维护者执行。
-代码不依赖仓库名，因此这一步不阻塞任何开发。
-
-**迁移时要一并检查的**（新仓库没有旧地址的重定向）：
-
-- 本地 remote：`git remote set-url origin <新地址>`
-- 两个分支都要推一次，确认跟踪关系正常
-- 任何 CI 或脚本里硬编码的旧 URL（本仓库目前没有）
+**仓库托管已完成**：已迁移到 <https://github.com/iamartinlong/Reqbox>，
+以全新状态发布（不带旧历史），`main` 与 `legacy/win2008r2` 均已推送。
 
 **验收**：
 
-- `git remote -v` 指向新地址
-- `git push` 在 `main` 与 `legacy/win2008r2` 均成功
-- 克隆新地址能 `go build`
+- [x] `git remote -v` 指向新地址
+- [x] `git push` 在 `main` 与 `legacy/win2008r2` 均成功
+- [x] 克隆新地址能 `go build`
+
+### 1.4 CI 与发版自动化　✅ 已完成
+
+代码不再只在本机验证：`.github/workflows/ci.yml` 覆盖 Linux + Windows 的
+Go 测试（Linux 带 `-race`）、前端测试与二进制冒烟；`.github/workflows/release.yml`
+配合 `.goreleaser.yaml`，推送 `v*` tag 即产出六平台压缩包并创建 Release。
+细节见 [DEVELOPMENT 的「发版」](./DEVELOPMENT.md) 与 CHANGELOG。
 
 ### 1.2 长 URL 可见性　0.3 天　✅ 已完成
 

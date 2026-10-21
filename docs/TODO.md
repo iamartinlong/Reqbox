@@ -88,7 +88,8 @@
 - [x] 老 localStorage 的主题与设置仍在
 - [x] 构建脚本产物名与新名一致
 
-**遗留**：仓库迁移到 GitHub 并以全新状态发布（见 [PLAN](./PLAN.md) 的 1.1）。
+**遗留**：无。仓库已在 <https://github.com/iamartinlong/Reqbox> 公开发布，
+`main` 与 `legacy/win2008r2` 均已推送（PLAN 的 1.1 已完成）。
 代码与构建都不依赖仓库名，所以这不阻塞使用。
 
 ---
