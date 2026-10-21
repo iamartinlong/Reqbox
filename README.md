@@ -155,6 +155,7 @@ docs/
   DECISIONS.md        why the non-obvious choices are the way they are
   CHANGELOG.md        what changed, and which defects were fixed
   DEVELOPMENT.md      local setup, build and verification
+  HANDOFF.md          handover: getting it running, current state, pitfalls
 ```
 
 ## Naming
