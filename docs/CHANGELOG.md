@@ -168,6 +168,15 @@
   实测（本地 `--snapshot`）：6 个包全部生成，Windows 包解开后
   `reqbox.exe -version` 输出快照版本，启动后 `/api/health` 与内嵌前端均正常。
 
+  首次真实发版为 `v0.2.0`（2026-10-21）：7 个资产（6 个包 + `checksums.txt`），
+  下载后 SHA-256 与 `checksums.txt` 一致，Linux 包内二进制的 `-version`
+  输出 `0.2.0`。
+
+  **自动 changelog 的教训**：最初把 `docs:` 与 `ci:` 前缀从 changelog 里
+  过滤掉了，而本仓库从首个提交以来的提交几乎全带这两个前缀，于是 v0.2.0
+  的自动说明只剩一条。现在只过滤 `chore:` / `test:`，并且优先使用手写
+  说明文件（`docs/release-notes/<tag>.md`）。
+
 ### 决定
 
 - **加密落盘（方案 B）暂不实现。** 凭据仍以明文存于数据库，靠文件权限与

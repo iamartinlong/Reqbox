@@ -72,6 +72,11 @@ git push origin v0.2.0
 | 版本号 | tag 名去掉 `v` 注入 `server.Version`，`reqbox -version` 可查 |
 | 预发布 | tag 名带 `-rc1` 之类时自动标为 prerelease |
 | 配置 | `.goreleaser.yaml`；工作流在 `.github/workflows/release.yml` |
+| 发布说明 | 若存在 `docs/release-notes/<tag>.md` 就用它覆盖自动生成的提交列表，否则用 changelog |
+
+**发布说明优先手写。** 自动生成的列表只有 commit 标题，说明不了行为变化。
+按 tag 建文件（如 `docs/release-notes/v0.2.0.md`），写清亮点、安装方式和
+已知限制；没有对应文件的版本自动退回 changelog，不会因此失败。
 
 **先演练再发。** `Release` 工作流也支持手动触发（Actions 页面 → Run
 workflow），那种模式下 GoReleaser 加 `--snapshot`：只构建、不发布，产物
