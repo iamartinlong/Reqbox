@@ -24,11 +24,14 @@ type Config struct {
 	Addr      string
 	StaticDir string // optional: serve a directory instead of the embedded build
 	Dev       bool   // when true, serve a placeholder page and skip static assets
+	// Auth guards the JSON API. The zero value disables the check, which keeps
+	// tests and `-no-auth` behaving as they did before auth existed.
+	Auth Auth
 }
 
 // New builds the router, wiring JSON API routes, the mock gateway and the SPA.
 func New(store *store.Store, log *logging.Logger, cfg Config, assets fs.FS) http.Handler {
-	a := &api{store: store, runner: runner.New(), log: log}
+	a := &api{store: store, runner: runner.New(), log: log, auth: cfg.Auth}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -36,11 +39,16 @@ func New(store *store.Store, log *logging.Logger, cfg Config, assets fs.FS) http
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5, "application/json", "text/html", "text/css", "application/javascript", "image/svg+xml"))
 	r.Use(noCacheAPI)
+	r.Use(cfg.Auth.guard)
 	r.Use(sameOriginGuard)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/health", a.handleHealth)
 		r.Get("/stats", a.handleStats)
+
+		r.Post("/session", a.handleSession)
+		r.Get("/session/status", a.handleSessionStatus)
+		r.Post("/logout", a.handleLogout)
 
 		r.Get("/collections", a.handleListCollections)
 		r.Post("/collections", a.handleCreateCollection)
@@ -86,14 +94,21 @@ func New(store *store.Store, log *logging.Logger, cfg Config, assets fs.FS) http
 		staticFS, _ = fs.Sub(assets, "web/dist")
 	}
 
-	if staticFS != nil {
-		r.Handle("/*", spaHandler(staticFS, cfg.Dev))
-	} else {
-		r.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
+	// The SPA shell, with one addition: a ?token= on the root URL is traded for
+	// a cookie and then removed from the address bar.
+	shell := spaHandler(staticFS, cfg.Dev)
+	if staticFS == nil {
+		shell = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			_, _ = w.Write([]byte(devPlaceholder))
 		})
 	}
+	r.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
+		if cfg.Auth.exchangeToken(w, r) {
+			return
+		}
+		shell.ServeHTTP(w, r)
+	})
 
 	return r
 }

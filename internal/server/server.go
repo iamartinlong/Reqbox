@@ -18,6 +18,7 @@ type api struct {
 	store  *store.Store
 	runner *runner.Executor
 	log    *logging.Logger
+	auth   Auth
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

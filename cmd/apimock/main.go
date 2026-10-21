@@ -32,9 +32,13 @@ func main() {
 
 func run() error {
 	var (
-		addr    = flag.String("addr", envOr("APIMOCK_ADDR", ":5178"), "listen address, e.g. :5178 or 127.0.0.1:8080")
+		// Loopback by default: this is a single-user tool, and binding every
+		// interface exposes the workspace to the whole network by accident.
+		addr    = flag.String("addr", envOr("APIMOCK_ADDR", "127.0.0.1:5178"), "listen address; use :5178 or 0.0.0.0:5178 to accept remote connections")
 		dbPath  = flag.String("db", envOr("APIMOCK_DB", defaultDBPath()), "path to the SQLite database file")
 		static  = flag.String("static", envOr("APIMOCK_STATIC", ""), "serve the web UI from this directory instead of the embedded build")
+		token   = flag.String("token", envOr("APIMOCK_TOKEN", ""), "API token; generated and printed once if empty")
+		noAuth  = flag.Bool("no-auth", false, "disable the API token check (anyone who can reach the port gets full access)")
 		verbose = flag.Bool("verbose", false, "log every HTTP request")
 		showVer = flag.Bool("version", false, "print the version and exit")
 	)
@@ -52,6 +56,13 @@ func run() error {
 		return fmt.Errorf("open database: %w", err)
 	}
 	defer st.Close()
+	// The database holds plaintext credentials. If the OS refused to restrict
+	// it, say so: running is better than refusing to start, but the operator
+	// should know another local account can read it.
+	if st.PermissionWarning != nil {
+		log.Warn("could not restrict database permissions; other local accounts may read stored credentials",
+			"error", st.PermissionWarning, "path", *dbPath)
+	}
 
 	var assets fs.FS
 	if sub, err := fs.Sub(apimock.WebAssets, "web/dist"); err == nil {
@@ -60,11 +71,26 @@ func run() error {
 		}
 	}
 
+	// Auth: a token guards the JSON API so that reaching the port is not the
+	// same thing as owning the workspace.
+	auth := server.Auth{}
+	if !*noAuth {
+		auth, err = server.EnsureStoredToken(st, *token)
+		if err != nil {
+			return fmt.Errorf("set up auth: %w", err)
+		}
+	}
+
 	handler := server.New(st, log, server.Config{
 		Addr:      *addr,
 		StaticDir: *static,
 		Dev:       os.Getenv("APIMOCK_DEV") == "1",
+		Auth:      auth,
 	}, assets)
+
+	// Print the token before serving, so the operator has it the moment the
+	// banner appears.
+	auth.LogToken(log, *addr)
 
 	srv := &http.Server{
 		Addr:              *addr,
@@ -76,10 +102,34 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// Say so when the address accepts remote connections. Binding widely is
+	// sometimes intended, but it is no longer the default.
+	if !listensOnLoopbackOnly(*addr) {
+		log.Warn("listening on a non-loopback address; anyone who can reach this port can reach the API",
+			"addr", *addr)
+	}
+
 	if err := listenAndServe(ctx, srv, log); err != nil {
 		return err
 	}
 	return nil
+}
+
+// listensOnLoopbackOnly reports whether addr binds just the loopback interface.
+// An empty host or a wildcard is treated as "everything", which is the case
+// worth warning about.
+func listensOnLoopbackOnly(addr string) bool {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return false
+	}
+	if host == "" {
+		return false
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback()
+	}
+	return strings.EqualFold(host, "localhost")
 }
 
 func listenAndServe(ctx context.Context, srv *http.Server, log *logging.Logger) error {

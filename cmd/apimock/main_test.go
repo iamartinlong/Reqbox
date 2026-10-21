@@ -62,3 +62,34 @@ func TestEnvOr(t *testing.T) {
 		t.Errorf("set env should win, got %q", got)
 	}
 }
+
+// The default is loopback, and anything that accepts remote connections should
+// be recognised so the startup warning fires. Treating a wildcard as "safe"
+// would keep the warning silent in exactly the case it exists for.
+func TestListensOnLoopbackOnly(t *testing.T) {
+	loopback := []string{
+		"127.0.0.1:5178",
+		"127.0.0.5:5178",
+		"[::1]:5178",
+		"localhost:5178",
+	}
+	for _, addr := range loopback {
+		if !listensOnLoopbackOnly(addr) {
+			t.Errorf("%q should be treated as loopback-only", addr)
+		}
+	}
+
+	exposed := []string{
+		":5178",
+		"0.0.0.0:5178",
+		"[::]:5178",
+		"192.168.1.10:5178",
+		"example.com:5178",
+		"5178",
+	}
+	for _, addr := range exposed {
+		if listensOnLoopbackOnly(addr) {
+			t.Errorf("%q should NOT be treated as loopback-only", addr)
+		}
+	}
+}

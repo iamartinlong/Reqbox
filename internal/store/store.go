@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -16,6 +15,11 @@ import (
 // Store wraps the SQLite database.
 type Store struct {
 	db *sql.DB
+	// PermissionWarning is non-nil when the database file could not be
+	// restricted to its owner. It is reported at startup rather than treated as
+	// a fatal error, because failing to open the database is worse than opening
+	// it with permissions the user has been warned about.
+	PermissionWarning error
 }
 
 var migrations = []string{
@@ -105,8 +109,11 @@ func Open(path string) (*Store, error) {
 		return nil, errors.New("database path is empty")
 	}
 	if dir := filepath.Dir(path); dir != "" && dir != "." {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return nil, fmt.Errorf("create data directory: %w", err)
+		// 0o700 and a restrictive ACL: the database holds plaintext credentials
+		// for every saved request, so another account on the same machine must
+		// not be able to read it.
+		if err := restrictDir(dir); err != nil {
+			return nil, fmt.Errorf("secure data directory: %w", err)
 		}
 	}
 
@@ -126,6 +133,9 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
+	// SQLite creates the file itself, so the restriction has to be applied after
+	// it exists. A failure here is reported but not fatal.
+	s.PermissionWarning = restrictToCurrentUser(path)
 	return s, nil
 }
 
