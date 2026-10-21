@@ -62,6 +62,18 @@ jobs:
       - name: Test before publishing
         run: go test ./... -count=1
 
+      # Hand-written notes win when a file exists for this tag; otherwise the
+      # generated commit list is used. Kept as a separate step so the fallback is
+      # visible in the log rather than buried in an argument list.
+      - name: Pick release notes
+        id: notes
+        run: |
+          if [ -f "docs/release-notes/${GITHUB_REF_NAME}.md" ]; then
+            echo "file=docs/release-notes/${GITHUB_REF_NAME}.md" >> "$GITHUB_OUTPUT"
+          else
+            echo "file=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: GoReleaser
         uses: goreleaser/goreleaser-action@v7
         with:
@@ -71,6 +83,7 @@ jobs:
           # `--clean` drops leftovers from a previous attempt in the same job.
           args: >-
             release --clean
+            ${{ steps.notes.outputs.file != '' && format('--release-notes {0}', steps.notes.outputs.file) || '' }}
             ${{ github.event_name == 'workflow_dispatch' && '--snapshot' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -56,12 +56,13 @@ checksum:
 
 changelog:
   sort: asc
+  # Only noise is dropped. `docs:` and `ci:` used to be filtered too, which on
+  # this repo left the release notes nearly empty: nearly every commit since the
+  # first release carries one of those prefixes.
   filters:
     exclude:
-      - "^docs:"
-      - "^ci:"
-      - "^test:"
       - "^chore:"
+      - "^test:"
 
 release:
   draft: false
