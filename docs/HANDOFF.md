@@ -3,7 +3,7 @@
 面向接手这个仓库的人。这里只写「拿到代码后怎么跑起来、当前是什么状态、
 哪些地方容易踩坑」，不再重复设计理由（那在 DECISIONS.md）。
 
-**最后更新**：2026-10-21
+**最后更新**：2026-10-22
 
 ---
 
@@ -23,12 +23,13 @@
 | 项 | 值 |
 | -- | -- |
 | 仓库 | <https://github.com/iamartinlong/Reqbox> |
-| `main` | `e2c67e9` — 当前开发主线，Go 1.24.1 |
+| `main` | `a2c52fb` — 当前开发主线，Go 1.24.1 |
 | `legacy/win2008r2` | `20118de` — Windows Server 2012 R2，Go 1.20 |
+| 最新版本 | `v0.2.0`（2026-10-21），[Release](https://github.com/iamartinlong/Reqbox/releases/tag/v0.2.0) |
 | 许可证 | MIT |
 
-**仓库是重新初始化的**，只有这两个分支、共 2 个提交。旧仓库（Gitea /
-`SuperGet`）的历史已废弃，不迁移。
+**仓库是重新初始化的**，只有这两个分支；`main` 从最初的 2 个提交增长到
+7 个。旧仓库（Gitea / `SuperGet`）的历史已废弃，不迁移。
 
 ### 两个分支的关系
 
@@ -55,6 +56,11 @@
 ---
 
 ## 四、从零跑起来
+
+**只想用，不想构建**：从 [Releases](https://github.com/iamartinlong/Reqbox/releases)
+下载对应平台的压缩包，解开即用（前端已内嵌）。
+
+从源码构建：
 
 ```bash
 # 1. 前端（必须先做，否则 go:embed 没有内容）
@@ -109,6 +115,18 @@ pnpm build
 CI（`.github/workflows/ci.yml`）会把这些各跑一遍，额外两项本机做不到：
 Windows 上的 Go 测试，以及 Linux 上的 `go test -race`。推送前想本地复现，
 见 [DEVELOPMENT.md](./DEVELOPMENT.md) 的「CI 会跑什么」。
+
+发版：
+
+```bash
+# 1. 写发布说明（可选，缺省退回自动 changelog）
+$EDITOR docs/release-notes/v0.3.0.md
+
+# 2. 打 tag 并推送，剩下的交给 CI
+git tag v0.3.0 && git push origin v0.3.0
+```
+
+详细约定见 [DEVELOPMENT.md](./DEVELOPMENT.md) 的「发版」。
 
 ---
 
@@ -179,7 +197,8 @@ shadcn/ui 的 `data-active` / `data-horizontal` 变体**不是内置的**。
 | -- | ---- |
 | Go 测试 | 78 通过 |
 | 前端测试 | 112 通过 |
-| CI | `.github/workflows/ci.yml`，Linux + Windows 上的 Go 测试（含 `-race`）、前端测试与二进制冒烟（[run #1 全绿](https://github.com/iamartinlong/Reqbox/actions/runs/39611849740)） |
+| CI | `.github/workflows/ci.yml`：Linux + Windows 的 Go 测试（Linux 带 `-race`）、前端测试、二进制冒烟。最近一次 `main` 全绿 |
+| CD | `.github/workflows/release.yml` + `.goreleaser.yaml`：推 `v*` tag 自动发布六平台产物 |
 | `tsc` / `lint` / `vet` | 干净 |
 | 上线审计 | 已完成，见 [AUDIT.md](./AUDIT.md) |
 | 已知阻塞项 | 无 |
@@ -193,16 +212,16 @@ shadcn/ui 的 `data-active` / `data-horizontal` 变体**不是内置的**。
 - 分阶段耗时：DNS / 连接 / TLS / 首字节 / 下载
 - 中英双语界面，跟随浏览器语言，可手动切换
 - API token 鉴权 + 数据库文件权限收紧
+- CI（每次推送）+ CD（推 tag 即发版，已发布 `v0.2.0`）
 
 ### 下一步可以做的
 
-见 [TODO.md](./TODO.md)。按优先级排，每条都有工时估算与验收方式。
+见 [TODO.md](./TODO.md)。当前**没有阻塞项，也没有进行中的条目**，剩余全是
+按需功能。
 
-其中最值得先看的两项：
-
-- **加密落盘**（1.5 天）：目前凭据明文存盘。触发条件是「数据库文件可能
-  离开这台机器」。
-- **SSE 支持**（1～1.5 天）：需要调试流式接口时。
+最值得先做的是 **SSE 支持**（1～1.5 天）：需要在 `internal/runner` 加一条
+不缓冲的读取路径，并在响应区做增量渲染。加密落盘（1.5 天）仍暂不实现，
+触发条件是「数据库文件可能离开这台机器」。
 
 ---
 

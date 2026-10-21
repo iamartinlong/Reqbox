@@ -1,0 +1,150 @@
+# 工作日志
+
+按时间倒序，记录**这一轮做了什么、为什么、留下什么**。与 [CHANGELOG](./CHANGELOG.md)
+的分工：CHANGELOG 面向使用者，写「行为变了什么」；这里面向维护者，写
+「当时怎么想的、踩了什么、下次别重复什么」。
+
+一条记录可以只有几行，但必须能回答：改了什么、验证方式、有没有遗留。
+
+---
+
+## 2026-10-21 ～ 10-22 · CI、CD 与首个正式发布
+
+**起点**：`main` @ `ead2f5f`，只有本机验证；没有 CI，没有 `.github/`，
+没有正式 tag 或 Release。
+
+**终点**：`main` @ `a2c52fb`，`v0.2.0` 已发布，CI 与发版全自动。
+
+### 1. 接入 CI（`8d79a84`）
+
+之前所有验证都在开发机跑，而「本机没有 gcc」正是 `-race` 一直没做的原因；
+同时 `internal/store/acl_windows_test.go` 带 `//go:build windows`，在
+Windows 之外的机器上一条都不会执行——而那正是保护明文凭据的代码。
+
+新建 `.github/workflows/ci.yml`，三个并行任务：
+
+| 任务 | 内容 |
+| ---- | ---- |
+| `Go` | Linux + Windows：`gofmt`、`vet`、`test`；Linux 另跑 `-race` |
+| `Web` | `pnpm install --frozen-lockfile`、`tsc -b`、`oxlint`、`vitest` |
+| `Build` | 构建前端 → `go build` → 启动二进制打 `/api/health` 与 `/` → 上传产物 |
+
+三个刻意的取舍：
+
+1. **`gofmt` 只在 Linux 检查。** 提交的 blob 是 LF，但 Windows 检出可能是
+   CRLF；在开发机上 `gofmt -l` 会列出整棵树，纯属误报。实测把仓库按 LF
+   检出后 `gofmt` 干净，所以问题在检出方式，不在代码。
+2. **`-race` 只在 Linux。** 需要 cgo + C 编译器。Windows 上要 mingw，
+   不稳定且 CI 里价值不大。
+3. **冒烟测试下载到文件再 `grep`。** `curl … | grep -q` 会让 curl 在
+   grep 提前退出时死于 SIGPIPE，而 runner 默认 `pipefail`，步骤会莫名变红。
+
+`ci.yml` 的首次运行（run #39611849740）全绿，`-race` 未报竞态。
+
+### 2. 真正的 CD（`24c4b18`、`4f5718e`）
+
+新增 `.goreleaser.yaml` 与 `.github/workflows/release.yml`：推 `v*` tag
+即构建六平台产物并创建 Release。
+
+要点：
+
+- **必须先 `pnpm build`。** `go:embed` 读的是 `web/dist` 的现状，跳过这步
+  会把「前端未内嵌」占位页发出去。工作流把它放在最前面，`Build` 任务的
+  冒烟测试也会验证 `/` 里真有 `<div id="root">`。
+- **发版流程自己再跑一次 `go test`。** tag 可以打在 CI 没跑过的提交上。
+- **`fetch-depth: 0`。** GoReleaser 用「上一个 tag 之后的提交」生成
+  changelog，浅克隆会得到空列表。
+- **`mod_timestamp` 用提交时间。** 同一 tag 重复构建字节一致，校验和稳定。
+- **`workflow_dispatch` 只做 `--snapshot`。** 手动触发用于验证配置，绝不
+  意外发布。
+- `ci.yml` 的 `Build` 任务加了 `goreleaser check`：配置写坏应在改它的 PR
+  上失败，而不是等到打 tag。
+
+### 3. 发布 v0.2.0
+
+发布前先在本地和 CI 双重验证，再打 tag：
+
+| 步骤 | 结果 |
+| ---- | ---- |
+| CI #3（tag 所在提交） | 4 任务全绿 |
+| 本地 `goreleaser release --snapshot --clean` | 6 包 + `checksums.txt` |
+| 解开 Windows 包启动 | `/api/health` 正常、内嵌前端存在 |
+| 打 tag 后 Release #1 | 成功，2 分 33 秒，7 个资产 |
+| 下载 `linux_amd64` 重算 SHA-256 | 与 `checksums.txt` 一致 |
+| 该包内 `reqbox -version` | `reqbox 0.2.0` |
+
+**踩到的问题：自动 changelog 几乎为空。**
+
+`.goreleaser.yaml` 最初把 `docs:` 与 `ci:` 前缀从 changelog 里过滤掉了。
+本仓库自首个提交以来，除两条以外全部带这两个前缀，于是 v0.2.0 的自动
+说明只剩一条 “Initial public release”。已发布页面上线后才发现。
+
+处理：
+
+1. 只过滤 `chore:` / `test:`，保留 `docs:` / `ci:`。
+2. 增加**手写发布说明**机制：存在 `docs/release-notes/<tag>.md` 时用它，
+   否则退回自动 changelog。工作流里用一步 shell 判断文件是否存在，再把
+   `--release-notes` 传给 GoReleaser。
+
+**别踩的坑**：GoReleaser 的 `release` 段**没有** `notes` 字段。先按直觉写了
+`release.notes:`，`goreleaser check` 直接报 `field notes not found`——这
+说明在 CI 里跑 `check` 是对的，否则这个错会在打 tag 时才暴露。
+
+已手动更新线上 v0.2.0 的说明（2457 字符）。下次发版前先写好
+`docs/release-notes/v0.3.0.md` 即可，不再依赖自动生成。
+
+### 4. 收尾
+
+- `docs/TODO.md`：`-race` 标为完成（由 CI 覆盖）；新增「CI 与发版自动化」
+  条目；总览改为「无阻塞项」；P3 补上触发条件与验收方式。
+- `docs/HANDOFF.md`：状态表、仓库快照、发版命令、下载即用的入口。
+- `docs/PLAN.md`：1.1 仓库托管完成；新增 1.4 CI/CD。
+- `docs/CHANGELOG.md`：0.2.0 定版，记录 CI、CD 与 changelog 的教训。
+- `README.md`：下载与发版说明。
+- 清理开发机上遗留的 `dist/`、临时校验目录，以及一个由工具调用把路径分隔符
+  写坏而产生的异常目录（名字形如 `C` + 一个私有区字符 + `UsersEDY`，内容只有
+  一个空的 `.local`，已删除；不是项目文件，也不在 git 里）。
+
+### 遗留
+
+| 项 | 说明 |
+| ---- | ---- |
+| legacy 分支没有 CI | `.github/` 只存在于 `main`。改动同时影响两个分支时，legacy 侧仍需手工用 Go 1.20.14 验证 |
+| 发布说明存在性无提示 | 缺 `docs/release-notes/<tag>.md` 时静默退回自动 changelog，日志里没有提示 |
+| 发版前的 CI 是人工确认的 | 打 tag 不必等 CI 绿；发版流程自己重跑 `go test`，但不跑前端测试与 `-race` |
+| SSE / WebSocket / 链式调用 | 见 TODO，均未开始 |
+
+---
+
+## 模板
+
+新增记录时复制这段：
+
+```markdown
+## YYYY-MM-DD · 一句话主题
+
+**起点**：分支与提交、当时的已知状态。
+**终点**：分支与提交、达到的状态。
+
+### 做了什么
+
+- 改了什么，为什么这样改
+
+### 验证
+
+| 检查 | 结果 |
+
+### 踩到的坑
+
+现象 → 根因 → 如何避免
+
+### 遗留
+
+| 项 | 说明 |
+```
+
+写作原则（与 [docs/README](./README.md) 的三条约定一致）：
+
+- 写**表现和根因**，不写「调了很久」。
+- 每条结论都要有验证方式，否则读者无法判断它现在是否还成立。
+- 遗留要写清触发条件，避免下一个人重新调研。

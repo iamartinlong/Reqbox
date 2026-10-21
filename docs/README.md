@@ -11,10 +11,13 @@
 | [PLAN.md](./PLAN.md) | 实施计划：分阶段步骤与验收 | 准备动手做某一项时 |
 | [DECISIONS.md](./DECISIONS.md) | 决策记录（DR） | 想知道某个设计为何如此、或想推翻它 |
 | [CHANGELOG.md](./CHANGELOG.md) | 已完成的改动与修复 | 了解项目演进、排查「什么时候变的」 |
+| [WORKLOG.md](./WORKLOG.md) | 工作日志：每轮做了什么、怎么验证、踩了什么坑 | 接手前想知道最近发生了什么、为什么这么改 |
 | [DEVELOPMENT.md](./DEVELOPMENT.md) | 本地开发、构建、验证流程 | 第一次跑起来、或搭建环境 |
 | [LEGACY-WINDOWS.md](./LEGACY-WINDOWS.md) | Windows Server 2016 之前系统的兼容方案 | 部署到旧版 Windows 服务器 |
 | [HANDOFF.md](./HANDOFF.md) | 交接说明：跑起来、当前状态、常见坑 | 刚接手、或重新克隆后 |
 | [AUDIT.md](./AUDIT.md) | 上线审计结果与遗留风险 | 上线前、或评估安全状况 |
+| [release-notes/](./release-notes/) | 每个版本的发布说明（发版时由工作流取用） | 准备发版时 |
+
 ## 三条约定
 
 1. **待办要写清验收方式。**
