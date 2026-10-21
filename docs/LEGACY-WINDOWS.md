@@ -5,7 +5,7 @@
 主分支的构建产物在 **Windows Server 2016 之前**的系统上可能无法启动。
 本文说明原因、适用范围，以及遇到时该怎么办。
 
-兼容包产物：`dist/reqbox-hushu-win-legacy-amd64/`
+兼容包产物：`dist/reqbox-win-legacy-amd64/`
 兼容分支：`legacy/win2008r2`（分支名按最初需求命名，实际适用范围更广）
 
 ---
@@ -61,7 +61,7 @@ Go 1.24 的 `runtime/os_windows.go` 里，`windowsFindfunc` 没有 nil 检查，
 
    输出 `reqbox 0.1.0` 说明可用，不必换包。
 
-2. **一闪而过则改用兼容包**（`dist/reqbox-hushu-win-legacy-amd64/`）。
+2. **一闪而过则改用兼容包**（`dist/reqbox-win-legacy-amd64/`）。
    Go 1.20 编译，已实测可在 2012 R2 与 2008 R2 上运行。
 
 ## 兼容分支做了什么

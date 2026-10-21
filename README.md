@@ -123,8 +123,7 @@ docs/
   DECISIONS.md        why the non-obvious choices are the way they are
   CHANGELOG.md        what changed, and which defects were fixed
   DEVELOPMENT.md      local setup, build and verification
-  HUSHU.md            the imported Hushu collection and how to use it
-  LEGACY-WINDOWS.md   Windows Server 2008 R2 compatibility branch
+   LEGACY-WINDOWS.md   Windows Server 2008 R2 compatibility branch
 ```
 
 ## Naming

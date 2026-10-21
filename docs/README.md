@@ -11,7 +11,6 @@
 | [DECISIONS.md](./DECISIONS.md) | 决策记录（DR） | 想知道某个设计为何如此、或想推翻它 |
 | [CHANGELOG.md](./CHANGELOG.md) | 已完成的改动与修复 | 了解项目演进、排查「什么时候变的」 |
 | [DEVELOPMENT.md](./DEVELOPMENT.md) | 本地开发、构建、验证流程 | 第一次跑起来、或搭建环境 |
-| [HUSHU.md](./HUSHU.md) | Hushu 接口合集的来源与用法 | 要调用这些接口、或需要重新导入 |
 | [LEGACY-WINDOWS.md](./LEGACY-WINDOWS.md) | Windows Server 2016 之前系统的兼容方案 | 部署到旧版 Windows 服务器 |
 
 ## 三条约定
