@@ -225,7 +225,7 @@
   **自动 changelog 的教训**：最初把 `docs:` 与 `ci:` 前缀从 changelog 里
   过滤掉了，而本仓库从首个提交以来的提交几乎全带这两个前缀，于是 v0.2.0
   的自动说明只剩一条。现在只过滤 `chore:` / `test:`，并且优先使用手写
-  说明文件（`docs/release-notes/<tag>.md`）。
+  说明文件（`docs/history/release-notes/<tag>.md`）。
 
 - **兼容分支也有 CI 与发版（2026-10-22，`v0.1.1-win2008r2`）。**
   `legacy/win2008r2` 分支此前只有构建脚本，靠人工验证，也没有发布产物。
@@ -238,7 +238,7 @@
   2008 R2 上照样秒退。新增的 `scripts/legacyguard` 改为三项检查（PE 头、
   全文禁用符号、导入 DLL 白名单）。
 
-  细节见 `docs/LEGACY-WINDOWS.md` 与 [WORKLOG](./WORKLOG.md)。兼容分支的
+  细节见 `docs/development/LEGACY-WINDOWS.md` 与 [WORKLOG](./WORKLOG.md)。兼容分支的
   完整文档在那条分支上，主分支只保留一份简版说明。
 
 ### 决定
@@ -251,7 +251,7 @@
   触发重新考虑的条件：数据库放入同步目录或会被外发、多人共用、部署到
   不受信网络。届时首选 DPAPI（`golang.org/x/sys/windows` 已提供
   `CryptProtectData`，无需新依赖），但需注意它挡不住「以该账户身份运行的
-  程序」。完整方案、信任边界与实现要点见 `docs/TODO.md`。
+  程序」。完整方案、信任边界与实现要点见 `docs/planning/TODO.md`。
 
 ### 修复
 
@@ -306,7 +306,7 @@
 
 ### 安全修复（审计阶段）
 
-详见 [DECISIONS.md](./DECISIONS.md) 的 DR-003、DR-004。
+详见 [DECISIONS.md](../design/DECISIONS.md) 的 DR-003、DR-004。
 
 | 问题 | 影响 |
 | ---- | ---- |
@@ -325,5 +325,5 @@
 
 ## 未发布
 
-下一版本的内容见 [TODO.md](./TODO.md)。0.2.0 已发布；SSE、Mock 转发请求体、
+下一版本的内容见 [TODO.md](../planning/TODO.md)。0.2.0 已发布；SSE、Mock 转发请求体、
 链式调用与 WebSocket 仍在待办中。

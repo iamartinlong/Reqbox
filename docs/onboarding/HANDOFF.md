@@ -51,7 +51,7 @@
 | 产物 | 六平台压缩包 | 仅 `windows/amd64` 兼容包 |
 | 兼容性守卫 | 无（不需要） | `scripts/legacyguard` |
 | 前端测试 | 112 个（Vitest） | 无（只构建） |
-| 交接文档 | 本文件 | 该分支的 `docs/HANDOFF.md` |
+| 交接文档 | 本文件 | 该分支的 `docs/onboarding/HANDOFF.md` |
 
 只有需要在 Windows Server 2016 之前的系统上运行时，才用 legacy 分支。
 
@@ -127,19 +127,19 @@ pnpm build
 
 CI（`.github/workflows/ci.yml`）会把这些各跑一遍，额外两项本机做不到：
 Windows 上的 Go 测试，以及 Linux 上的 `go test -race`。推送前想本地复现，
-见 [DEVELOPMENT.md](./DEVELOPMENT.md) 的「CI 会跑什么」。
+见 [DEVELOPMENT.md](../development/DEVELOPMENT.md) 的「CI 会跑什么」。
 
 发版：
 
 ```bash
 # 1. 写发布说明（可选，缺省退回自动 changelog）
-$EDITOR docs/release-notes/v0.3.0.md
+$EDITOR docs/history/release-notes/v0.3.0.md
 
 # 2. 打 tag 并推送，剩下的交给 CI
 git tag v0.3.0 && git push origin v0.3.0
 ```
 
-详细约定见 [DEVELOPMENT.md](./DEVELOPMENT.md) 的「发版」。
+详细约定见 [DEVELOPMENT.md](../development/DEVELOPMENT.md) 的「发版」。
 
 ---
 
@@ -173,7 +173,7 @@ git checkout legacy/win2008r2
 **注意**：只检查 PE 头不够。Go 1.24 的二进制 PE 头仍写着 6.1，`ProcessPrng`
 是运行时解析的，导入表里也看不到。所以 legacy 分支用 `scripts/legacyguard`
 做三项检查（PE 头、全文禁用符号、导入 DLL 白名单），详见该分支的
-`docs/LEGACY-WINDOWS.md`。
+`docs/development/LEGACY-WINDOWS.md`。
 
 ### 3. 不要在这个分支上跑 `go mod tidy`
 
@@ -195,7 +195,7 @@ git checkout legacy/win2008r2
 数据库文件权限已收紧到当前账户，但**能读到文件的人就能读出全部凭据**。
 
 这是有意的范围决定，理由与将来如何加密记录在
-[TODO.md](./TODO.md) 的「历史快照中的凭证为明文」一节。
+[TODO.md](../planning/TODO.md) 的「历史快照中的凭证为明文」一节。
 
 ### 5. 前端测试需要 `window.matchMedia` 桩
 
@@ -220,7 +220,7 @@ shadcn/ui 的 `data-active` / `data-horizontal` 变体**不是内置的**。
 | CI | `.github/workflows/ci.yml`：Linux + Windows 的 Go 测试（Linux 带 `-race`）、前端测试、二进制冒烟。最近一次 `main` 全绿 |
 | CD | `.github/workflows/release.yml` + `.goreleaser.yaml`：推 `v*` tag 自动发布六平台产物 |
 | `tsc` / `lint` / `vet` | 干净 |
-| 上线审计 | 已完成，见 [AUDIT.md](./AUDIT.md) |
+| 上线审计 | 已完成，见 [AUDIT.md](../design/AUDIT.md) |
 | 已知阻塞项 | 无 |
 
 ### 已完成的主要能力
@@ -236,7 +236,7 @@ shadcn/ui 的 `data-active` / `data-horizontal` 变体**不是内置的**。
 
 ### 下一步可以做的
 
-见 [TODO.md](./TODO.md)。当前**没有阻塞项，也没有进行中的条目**，剩余全是
+见 [TODO.md](../planning/TODO.md)。当前**没有阻塞项，也没有进行中的条目**，剩余全是
 按需功能。
 
 最值得先做的是 **SSE 支持**（1～1.5 天）：需要在 `internal/runner` 加一条
@@ -311,6 +311,6 @@ GOTOOLCHAIN=go1.20.14 go build ./cmd/reqbox
 - 生产环境（Windows Server 2012 R2 / 2008 R2）上现存的数据库是否要迁移
 - **Windows Server 2008 R2 SP1 的实机验证**：`v0.1.1-win2008r2` 已发布，
   构建侧证据齐备，但还没在真机上启动过。验证步骤在 legacy 分支的
-  `docs/TODO.md` 的 P1
+  `docs/planning/TODO.md` 的 P1
 - 是否需要保留旧 Gitea 仓库作为归档
 - 客户接口的原始来源（不在本仓库内）

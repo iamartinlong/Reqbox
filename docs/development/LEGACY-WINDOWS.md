@@ -6,7 +6,7 @@
 本文说明原因、适用范围，以及遇到时该怎么办。
 
 > **本文件在 `main` 上是简版**。完整版本（构建细节、CI、发版、`legacyguard`
-> 的三项检查）在 `legacy/win2008r2` 分支的 `docs/LEGACY-WINDOWS.md`。两边
+> 的三项检查）在 `legacy/win2008r2` 分支的 `docs/development/LEGACY-WINDOWS.md`。两边
 > 的差异是刻意的：主分支读者只需要知道「这是怎么回事、该下哪个包」。
 
 兼容包下载：<https://github.com/iamartinlong/Reqbox/releases/tag/v0.1.1-win2008r2>

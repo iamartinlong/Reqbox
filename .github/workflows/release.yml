@@ -68,8 +68,9 @@ jobs:
       - name: Pick release notes
         id: notes
         run: |
-          if [ -f "docs/release-notes/${GITHUB_REF_NAME}.md" ]; then
-            echo "file=docs/release-notes/${GITHUB_REF_NAME}.md" >> "$GITHUB_OUTPUT"
+          # The notes live beside the changelog now, under docs/history.
+          if [ -f "docs/history/release-notes/${GITHUB_REF_NAME}.md" ]; then
+            echo "file=docs/history/release-notes/${GITHUB_REF_NAME}.md" >> "$GITHUB_OUTPUT"
           else
             echo "file=" >> "$GITHUB_OUTPUT"
           fi

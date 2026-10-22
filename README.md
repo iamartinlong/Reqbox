@@ -12,8 +12,8 @@ Written in Go + React. The web build is embedded in the Go binary, so shipping
 it means copying one file.
 
 Outstanding work and the reasoning behind non-obvious choices are kept in
-[docs/](docs/README.md) — start there for the TODO list, decision records,
-changelog and development notes.
+[docs/](docs/README.md) — start there. It is grouped so you can go straight to
+the part you need: onboarding, planning, design, development, or history.
 
 ---
 
@@ -186,9 +186,10 @@ explaining that the UI was not embedded.
 
 ## Layout
 
-```
+```text
 cmd/reqbox/          entry point, flags, graceful shutdown
 embed.go              //go:embed of web/dist
+internal/config/      reqbox.yaml parsing
 internal/store/       SQLite schema, migrations, and queries
 internal/runner/      template resolution, HTTP execution, curl rendering
 internal/server/      chi router, JSON API, mock gateway, SPA serving
@@ -197,19 +198,19 @@ web/src/
   components/ui/      shadcn/ui primitives
   lib/                API client, types, formatting, theme, zustand store
 docs/
-  README.md           index: what lives here and the conventions for it
-  TODO.md             open work, with rationale and acceptance criteria
-  DECISIONS.md        why the non-obvious choices are the way they are
-  CHANGELOG.md        what changed, and which defects were fixed
-  DEVELOPMENT.md      local setup, build and verification
-  HANDOFF.md          handover: getting it running, current state, pitfalls
+  README.md           index: groups, and the conventions for each
+  onboarding/         start here: handover, current state, pitfalls
+  planning/           what is left to do and the plan for doing it
+  design/             why the non-obvious choices are the way they are
+  development/        local setup, build, verification, legacy Windows
+  history/            changelog, work log, per-release notes
 ```
 
 ## Naming
 
 The project is `reqbox` throughout: the Go module, binary, data path,
 environment variables and UI. See
-[docs/DECISIONS.md](docs/DECISIONS.md#naming) for why that name was chosen and
+[docs/design/DECISIONS.md](docs/design/DECISIONS.md) for why that name was chosen and
 which alternatives were rejected.
 
 ## API
@@ -323,7 +324,7 @@ past regressions, which is why these tests exist.
   passwords and API keys inside it. This is a deliberate scope decision rather
   than an oversight: the tool is intended to run on one machine and keep its
   data there. Encryption at rest becomes worth its key-management cost once the
-  file may leave that machine; see `docs/TODO.md` for the plan.
+  file may leave that machine; see `docs/planning/TODO.md` for the plan.
 - **The token is sent in the clear over HTTP.** It is a bearer credential: on a
   network you do not trust, put a TLS terminator in front of it. It is kept out
   of the address bar after the one-time exchange, and the session cookie is

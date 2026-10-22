@@ -72,10 +72,10 @@ git push origin v0.2.0
 | 版本号 | tag 名去掉 `v` 注入 `server.Version`，`reqbox -version` 可查 |
 | 预发布 | tag 名带 `-rc1` 之类时自动标为 prerelease |
 | 配置 | `.goreleaser.yaml`；工作流在 `.github/workflows/release.yml` |
-| 发布说明 | 若存在 `docs/release-notes/<tag>.md` 就用它覆盖自动生成的提交列表，否则用 changelog |
+| 发布说明 | 若存在 `docs/history/release-notes/<tag>.md` 就用它覆盖自动生成的提交列表，否则用 changelog |
 
 **发布说明优先手写。** 自动生成的列表只有 commit 标题，说明不了行为变化。
-按 tag 建文件（如 `docs/release-notes/v0.2.0.md`），写清亮点、安装方式和
+按 tag 建文件（如 `docs/history/release-notes/v0.2.0.md`），写清亮点、安装方式和
 已知限制；没有对应文件的版本自动退回 changelog，不会因此失败。
 
 **先演练再发。** `Release` 工作流也支持手动触发（Actions 页面 → Run
@@ -168,7 +168,13 @@ web/src/
   components/       界面，每个文件一个区域
   components/ui/    shadcn/ui 基础组件（生成，通常不改）
   lib/              API 客户端、类型、格式化、主题、zustand store
-docs/               本目录
+docs/
+  README.md         索引与维护规则
+  onboarding/       交接说明
+  planning/         待办与实施计划
+  design/           决策记录与上线审计
+  development/      开发、构建、发版、旧系统兼容（本文件在这里）
+  history/          变更记录、工作日志、发布说明
 .github/workflows/  ci.yml（每次推送/PR）与 release.yml（tag）
 .goreleaser.yaml    发版产物配置
 reqbox.example.yaml 配置文件示例，可直接改名使用

@@ -26,7 +26,7 @@
 | 配置与启动体验 | ✅ 已完成（配置文件、端口顺延、自动开浏览器） |
 | 功能待办 | 5 项，合计约 7～11 天，见 P3 |
 
-**兼容分支的状态另见** `legacy/win2008r2` 分支的 `docs/TODO.md`。该分支
+**兼容分支的状态另见** `legacy/win2008r2` 分支的 `docs/planning/TODO.md`。该分支
 已在 2008 R2 实机启动成功，遗留的是**复验本轮三项修复**。
 
 **剩余功能与建议顺序**：
@@ -128,7 +128,7 @@ DACL 测试长期没有自动执行。「本机能过」不等于「换台机器
 | `.github/workflows/ci.yml` | Go（Linux + Windows，Linux 带 `-race`）、Web（tsc / oxlint / vitest）、Build（真启动二进制冒烟 + `goreleaser check`） |
 | `.github/workflows/release.yml` | `v*` tag 触发，构建前端 → 重跑测试 → 发布 |
 | `.goreleaser.yaml` | 六平台产物、校验和、版本注入 |
-| `docs/release-notes/<tag>.md` | 手写发布说明，存在时覆盖自动 changelog |
+| `docs/history/release-notes/<tag>.md` | 手写发布说明，存在时覆盖自动 changelog |
 
 **验收结果**：
 
@@ -161,7 +161,7 @@ DACL 测试长期没有自动执行。「本机能过」不等于「换台机器
 | 端口冲突顺延 | 一行 bind 错误对终端用户没有意义；顺延并记录实际端口 |
 | 修 `-addr :0` 的链接端口 | 链接指向端口 0 是不可用的；根因是 `LogToken` 早于 `net.Listen` |
 
-验收结果见 [WORKLOG](./WORKLOG.md) 与 CHANGELOG；`internal/config` 有 11 个
+验收结果见 [WORKLOG](../history/WORKLOG.md) 与 CHANGELOG；`internal/config` 有 11 个
 用例，`listen_test.go` 用真实占用端口的场景验证顺延。
 
 ### [x] 前端自动化测试　`1.5～2 天`　已落地 112 个用例

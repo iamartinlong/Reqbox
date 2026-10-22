@@ -4,7 +4,7 @@
 **按什么顺序做、每一步怎么落地、如何验收**。
 
 工时单位为人日（8 小时），按「已熟悉本代码库」估算。
-单项的动机与取舍见 [TODO.md](./TODO.md) 与 [DECISIONS.md](./DECISIONS.md)。
+单项的动机与取舍见 [TODO.md](./TODO.md) 与 [DECISIONS.md](../design/DECISIONS.md)。
 
 ---
 
@@ -82,8 +82,8 @@
 代码不再只在本机验证：`.github/workflows/ci.yml` 覆盖 Linux + Windows 的
 Go 测试（Linux 带 `-race`）、前端测试与二进制冒烟；`.github/workflows/release.yml`
 配合 `.goreleaser.yaml`，推送 `v*` tag 即产出六平台压缩包并创建 Release。
-`v0.2.0` 已按此流程发布。细节见 [DEVELOPMENT 的「发版」](./DEVELOPMENT.md)、
-CHANGELOG 与 [WORKLOG](./WORKLOG.md)。
+`v0.2.0` 已按此流程发布。细节见 [DEVELOPMENT 的「发版」](../development/DEVELOPMENT.md)、
+CHANGELOG 与 [WORKLOG](../history/WORKLOG.md)。
 
 ---
 
@@ -384,7 +384,7 @@ DPAPI 的信任边界、以及实现时必须一并处理的四点，记录在
 
    覆盖状态码、内容类型、重定向、慢响应、错误形态等场景，浏览器打开
    `http://127.0.0.1:5250` 有索引页。
-4. 更新 `docs/CHANGELOG.md` 与 `docs/WORKLOG.md`
+4. 更新 `docs/history/CHANGELOG.md` 与 `docs/history/WORKLOG.md`
 5. 在 TODO 里标为 `[x]`，或移到「已修复」区
 6. 提交信息说明**为什么**，不只是改了什么
 
@@ -424,4 +424,4 @@ M2 是关键节点：从它开始，后续每一步都有自动化兜底。M5 �
 起手、且不引入长期状态管理负担的一项。
 
 唯一带外部依赖的待办是**2008 R2 SP1 实机验证**：产物已发布，需要一台
-真机。步骤见 `legacy/win2008r2` 分支的 `docs/TODO.md`。
+真机。步骤见 `legacy/win2008r2` 分支的 `docs/planning/TODO.md`。

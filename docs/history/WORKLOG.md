@@ -82,7 +82,7 @@ Windows 之外的机器上一条都不会执行——而那正是保护明文凭
 处理：
 
 1. 只过滤 `chore:` / `test:`，保留 `docs:` / `ci:`。
-2. 增加**手写发布说明**机制：存在 `docs/release-notes/<tag>.md` 时用它，
+2. 增加**手写发布说明**机制：存在 `docs/history/release-notes/<tag>.md` 时用它，
    否则退回自动 changelog。工作流里用一步 shell 判断文件是否存在，再把
    `--release-notes` 传给 GoReleaser。
 
@@ -91,15 +91,15 @@ Windows 之外的机器上一条都不会执行——而那正是保护明文凭
 说明在 CI 里跑 `check` 是对的，否则这个错会在打 tag 时才暴露。
 
 已手动更新线上 v0.2.0 的说明（2457 字符）。下次发版前先写好
-`docs/release-notes/v0.3.0.md` 即可，不再依赖自动生成。
+`docs/history/release-notes/v0.3.0.md` 即可，不再依赖自动生成。
 
 ### 4. 收尾
 
-- `docs/TODO.md`：`-race` 标为完成（由 CI 覆盖）；新增「CI 与发版自动化」
+- `docs/planning/TODO.md`：`-race` 标为完成（由 CI 覆盖）；新增「CI 与发版自动化」
   条目；总览改为「无阻塞项」；P3 补上触发条件与验收方式。
-- `docs/HANDOFF.md`：状态表、仓库快照、发版命令、下载即用的入口。
-- `docs/PLAN.md`：1.1 仓库托管完成；新增 1.4 CI/CD。
-- `docs/CHANGELOG.md`：0.2.0 定版，记录 CI、CD 与 changelog 的教训。
+- `docs/onboarding/HANDOFF.md`：状态表、仓库快照、发版命令、下载即用的入口。
+- `docs/planning/PLAN.md`：1.1 仓库托管完成；新增 1.4 CI/CD。
+- `docs/history/CHANGELOG.md`：0.2.0 定版，记录 CI、CD 与 changelog 的教训。
 - `README.md`：下载与发版说明。
 - 清理开发机上遗留的 `dist/`、临时校验目录，以及一个由工具调用把路径分隔符
   写坏而产生的异常目录（名字形如 `C` + 一个私有区字符 + `UsersEDY`，内容只有
@@ -110,7 +110,7 @@ Windows 之外的机器上一条都不会执行——而那正是保护明文凭
 | 项 | 说明 |
 | ---- | ---- |
 | legacy 分支没有 CI | `.github/` 只存在于 `main`。改动同时影响两个分支时，legacy 侧仍需手工用 Go 1.20.14 验证 |
-| 发布说明存在性无提示 | 缺 `docs/release-notes/<tag>.md` 时静默退回自动 changelog，日志里没有提示 |
+| 发布说明存在性无提示 | 缺 `docs/history/release-notes/<tag>.md` 时静默退回自动 changelog，日志里没有提示 |
 | 发版前的 CI 是人工确认的 | 打 tag 不必等 CI 绿；发版流程自己重跑 `go test`，但不跑前端测试与 `-race` |
 | SSE / WebSocket / 链式调用 | 见 TODO，均未开始 |
 
@@ -198,7 +198,7 @@ Windows 之外的机器上一条都不会执行——而那正是保护明文凭
 
 | 项 | 说明 |
 | ---- | ---- |
-| **2008 R2 SP1 实机验证** | 唯一没打勾的关键项。步骤在 legacy 分支 `docs/TODO.md` 的 P1 |
+| **2008 R2 SP1 实机验证** | 唯一没打勾的关键项。步骤在 legacy 分支 `docs/planning/TODO.md` 的 P1 |
 | 两个分支各改一次 | 工作流与 `legacyguard` 只存在于 legacy，主分支没有对应物；这是刻意的（主分支不需要） |
 | legacy 分支无前端测试 | 只构建不测试；主分支的 Vitest 不会带过去（会把新依赖带进 Go 1.20 约束） |
 
@@ -307,7 +307,7 @@ Windows 之外的机器上一条都不会执行——而那正是保护明文凭
 | 项 | 说明 |
 ```
 
-写作原则（与 [docs/README](./README.md) 的三条约定一致）：
+写作原则（与 [docs/README](../README.md) 的三条约定一致）：
 
 - 写**表现和根因**，不写「调了很久」。
 - 每条结论都要有验证方式，否则读者无法判断它现在是否还成立。
