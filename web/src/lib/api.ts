@@ -34,10 +34,34 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       /* response had no JSON body */
     }
+    // A 401 means the session is gone or was never established. Announce it so
+    // the app can show the unlock screen instead of a toast the user cannot act
+    // on. The status endpoint is excluded because it uses 401 as its normal
+    // "signed out" answer.
+    if (res.status === 401 && !path.startsWith('/session')) {
+      window.dispatchEvent(new CustomEvent('reqbox:unauthorized'))
+    }
     throw new ApiError(res.status, message)
   }
   if (res.status === 204) return undefined as T
   return (await res.json()) as T
+}
+
+export type SessionStatus = { ok: boolean; auth: boolean }
+
+export const session = {
+  /** Signed-out is a normal answer here, not an error to surface. */
+  status: async (): Promise<SessionStatus> => {
+    const res = await fetch(`${BASE}/session/status`, {
+      headers: { 'Content-Type': 'application/json' },
+    })
+    if (res.status === 401) return { ok: false, auth: true }
+    if (!res.ok) throw new ApiError(res.status, res.statusText)
+    return (await res.json()) as SessionStatus
+  },
+  signIn: (token: string) =>
+    request<{ ok: boolean }>('/session', { method: 'POST', body: JSON.stringify({ token }) }),
+  signOut: () => request<{ ok: boolean }>('/logout', { method: 'POST' }),
 }
 
 export const api = {

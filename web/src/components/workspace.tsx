@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { FileTextIcon, MenuIcon, TerminalIcon } from 'lucide-react'
 import { cn } from 'cn'
-import { api } from '@/lib/api'
+import { api, session } from '@/lib/api'
 import { useWorkspace } from '@/lib/store'
 import { toast } from 'sonner'
 import { Sidebar } from '@/components/sidebar'
@@ -13,6 +13,7 @@ import { CurlDialog } from '@/components/curl-dialog'
 import { useConfirm } from '@/components/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { RunSettingsDialog } from '@/components/run-settings-dialog'
+import { UnlockScreen } from '@/components/unlock-screen'
 import type { RunResponse } from '@/lib/types'
 
 export function Workspace() {
@@ -31,6 +32,7 @@ export function Workspace() {
   } = useWorkspace()
 
   const [loading, setLoading] = useState(true)
+  const [locked, setLocked] = useState(false)
   const [running, setRunning] = useState(false)
   const [response, setResponse] = useState<RunResponse | null>(null)
   const [envOpen, setEnvOpen] = useState(false)
@@ -58,21 +60,40 @@ export function Workspace() {
     return reqs
   }, [setWorkspace, setHistory])
 
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        await reload()
-      } catch {
-        if (!cancelled) toast.error('Could not load the workspace')
-      } finally {
-        if (!cancelled) setLoading(false)
+  // Load the workspace, but only once the session is known to be good.
+  //
+  // Asking first avoids the alternative: fire the workspace calls, catch the
+  // 401, then show the unlock screen. That path flashes an error toast for
+  // something that is not an error at all — a fresh install is simply locked.
+  const load = useCallback(async () => {
+    try {
+      const status = await session.status()
+      if (!status.ok) {
+        setLocked(true)
+        setLoading(false)
+        return
       }
-    })()
-    return () => {
-      cancelled = true
+      setLocked(false)
+      await reload()
+    } catch {
+      toast.error('Could not load the workspace')
+    } finally {
+      setLoading(false)
     }
   }, [reload])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  // A 401 from any later call means the cookie went away (expired, cleared, or
+  // the server restarted with a new token). Drop to the unlock screen rather
+  // than leaving the user with a toast and a workspace that cannot save.
+  useEffect(() => {
+    const onUnauthorized = () => setLocked(true)
+    window.addEventListener('reqbox:unauthorized', onUnauthorized)
+    return () => window.removeEventListener('reqbox:unauthorized', onUnauthorized)
+  }, [])
 
   // Open the most recent request on first load so the app never starts blank.
   useEffect(() => {
@@ -190,6 +211,21 @@ export function Workspace() {
   const newRequest = () => {
     startDraft()
     setResponse(null)
+  }
+
+  // Locked outranks everything: with no valid session there is no workspace to
+  // show, and rendering an empty shell behind the form reads as a broken app
+  // rather than a locked one.
+  if (locked) {
+    return (
+      <UnlockScreen
+        onUnlocked={() => {
+          setLocked(false)
+          setLoading(true)
+          void load()
+        }}
+      />
+    )
   }
 
   return (

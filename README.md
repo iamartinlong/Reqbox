@@ -50,17 +50,51 @@ go build -o reqbox ./cmd/reqbox
 ./reqbox
 ```
 
-Then open <http://localhost:5178>.
+On first start Reqbox prints an API token and a URL that signs you in, and
+**opens your browser at that URL**. Open the URL by hand if the browser did not
+come up: pasting it exchanges the token for an HttpOnly session cookie, then
+removes it from the address bar. Only the hash is stored, so the plaintext is
+shown once — after a restart the browser opens the bare address and you land on
+the unlock screen.
 
 Flags (each also has an environment variable):
 
-| Flag        | Env              | Default                     | Meaning                              |
-| ----------- | ---------------- | --------------------------- | ------------------------------------ |
-| `-addr`     | `REQBOX_ADDR`   | `:5178`                     | Listen address                       |
-| `-db`       | `REQBOX_DB`     | `./data/reqbox.db`         | SQLite file (created if missing)     |
-| `-static`   | `REQBOX_STATIC` | —                           | Serve the UI from a directory        |
-| `-verbose`  | —                | off                         | Log every request                    |
-| `-version`  | —                | —                           | Print the version and exit           |
+| Flag          | Env              | Default               | Meaning                                    |
+| ------------- | ---------------- | --------------------- | ------------------------------------------ |
+| `-addr`       | `REQBOX_ADDR`   | `127.0.0.1:5178`      | Listen address (loopback only)             |
+| `-db`         | `REQBOX_DB`     | `./data/reqbox.db`    | SQLite file (created if missing)           |
+| `-static`     | `REQBOX_STATIC` | —                     | Serve the UI from a directory              |
+| `-token`      | `REQBOX_TOKEN`  | generated             | Fixed API token                            |
+| `-no-auth`    | —                | off                   | Disable the check (prints a warning)       |
+| `-verbose`    | —                | off                   | Log every request                          |
+| `-no-browser` | —                | off                   | Do not open a browser at startup           |
+| `-version`    | —                | —                     | Print the version and exit                 |
+
+**If the port is busy, Reqbox moves to the next free one** and logs both ports;
+the sign-in URL always uses the port actually bound. Set `server.autoPort:
+false` to make a busy port a hard failure instead.
+
+## Configuration file
+
+`reqbox.yaml` next to the executable supplies defaults, which matters here more
+than on modern systems: this build is normally started by double-clicking, where
+there is no way to pass a flag. See `reqbox.example.yaml`.
+
+```yaml
+server:
+  port: 5178        # or `addr: 127.0.0.1:5178`
+  autoPort: true
+  openBrowser: true
+storage:
+  db: data/reqbox.db
+auth:
+  enabled: true
+logging:
+  verbose: false
+```
+
+Precedence, highest first: **flag > environment variable > `reqbox.yaml` >
+built-in default**. Unknown keys are an error, not silently ignored.
 
 The database path defaults to `data/reqbox.db` next to the binary when that
 directory is writable; otherwise it falls back to the OS config directory. The

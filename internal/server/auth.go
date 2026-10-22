@@ -259,7 +259,25 @@ func (a Auth) exchangeToken(w http.ResponseWriter, r *http.Request) bool {
 //
 // Printing the token is the intended way to hand it to the user: it never lands
 // in a file, and it is the only copy unless they configured one.
-func (a Auth) LogToken(log *logging.Logger, addr string) {
+// LoginURL returns the one-time sign-in link, or "" when there is no token to
+// put in it.
+//
+// The caller passes the base URL that the listener actually bound to, so this
+// works for `-addr :0` and for a port the server had to fall back to. Building
+// the URL from the configured address instead would print a link to a port
+// nothing is listening on.
+func (a Auth) LoginURL(baseURL string) string {
+	if !a.Enabled() || a.token == "" {
+		return ""
+	}
+	return baseURL + "/?token=" + a.token
+}
+
+// LogToken prints the token once at startup, with a ready-to-click URL.
+//
+// Printing the token is the intended way to hand it to the user: it never lands
+// in a file, and it is the only copy unless they configured one.
+func (a Auth) LogToken(log *logging.Logger, baseURL string) {
 	if !a.Enabled() {
 		log.Warn("authentication is DISABLED: anyone who can reach this port can read every stored credential")
 		return
@@ -268,7 +286,7 @@ func (a Auth) LogToken(log *logging.Logger, addr string) {
 		log.Info("using the previously generated API token (open the app to sign in)")
 		return
 	}
-	url := fmt.Sprintf("http://%s/?token=%s", displayAddr(addr), a.token)
+	url := a.LoginURL(baseURL)
 	if a.generated {
 		log.Info("API token generated; open this URL once to sign in",
 			"token", a.token, "url", url)

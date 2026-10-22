@@ -179,6 +179,15 @@ export function Sidebar({ onOpenEnvironments, onOpenSettings, onNavigate }: Prop
 
   const exportWorkspace = async () => {
     const res = await fetch('/api/export')
+    // Without this check a 401 body (an error object) would be saved as the
+    // export file, which looks like a corrupt backup rather than a lost session.
+    if (!res.ok) {
+      if (res.status === 401) {
+        window.dispatchEvent(new CustomEvent('reqbox:unauthorized'))
+      }
+      toast.error('Export failed')
+      return
+    }
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

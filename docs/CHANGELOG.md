@@ -5,6 +5,65 @@
 
 ---
 
+## [未发布]
+
+### 新增
+
+- **启动时自动打开浏览器。** 在 2008 R2 上双击运行时，控制台窗口里的登录链接
+  复制不出来，而 token 明文只打印一次——错过就得删库重来。现在启动后直接把
+  浏览器打开到该链接。`-no-browser` 或 `server.openBrowser: false` 可关。
+
+  重启后明文 token 已不存在，此时打开裸地址，落到解锁页。
+
+- **`reqbox.yaml` 配置文件**（示例 `reqbox.example.yaml`）。此前端口只能靠
+  `-addr` 改，而双击启动没有传参途径。优先级：命令行 > 环境变量 > 文件 >
+  默认。未知键报错而不是忽略。
+
+- **端口冲突自动顺延。** 依次尝试后 20 个端口，并记录
+  `requested=... using=...`。`server.autoPort: false` 可恢复为硬失败。
+
+### 修复
+
+- **界面能打开，但保存请求时提示无效 token。** 后端鉴权在 `51c7ac0` 已完整
+  移植，但**前端从未移植解锁页**：`web/src/` 下没有 `unlock-screen.tsx`，
+  也没有 `session` API 封装。结果是 `/` 能打开（它不需要鉴权），而所有
+  `/api/*` 返回 401，前端只弹一个 toast 然后渲染空界面。
+
+  已移植 `unlock-screen`、`session` API 与 401 广播事件。分支内没有 i18n，
+  解锁页为英文——移植整套翻译系统才是真正越界。
+
+  实测确认修复前产物里查不到 `unlock.title` / `session/status`，修复后均存在，
+  并用浏览器走完「解锁页 → 错误提示 → 正确 token → 工作区 → 刷新保持会话」。
+
+- **`-addr 127.0.0.1:0` 时登录链接指向端口 0。** `LogToken` 在 `net.Listen`
+  之前执行，用配置地址拼 URL。改为先绑定、再用 `listener.Addr()` 拼。
+
+- **Windows 控制台拖选会让程序看起来卡住。** 默认的快速编辑模式让点击变成
+  选择并暂停输出，Ctrl+C 也从「中断」变成「复制」。启动时清掉该标志位。
+
+- 补上 `LICENSE`（此前本分支缺该文件，打包会失败）。README 增加了 License
+  小节。
+
+- **发布 `v0.1.1-win2008r2`**（2026-10-22）。首个带 CI 与自动化发布的兼容包。
+
+  | 项 | 值 |
+  | -- | -- |
+  | 资产 | `reqbox_0.1.1_windows_amd64_legacy.zip`（4.85 MB）+ `checksums.txt` |
+  | 内容 | `reqbox.exe`、`LICENSE`、`README.md`、`LEGACY-WINDOWS.md` |
+  | 版本 | `reqbox 0.1.1` |
+  | 工具链 | Go 1.20.14 |
+
+  发布后用 Release 的下载链接复核过：SHA-256 与 `checksums.txt` 一致，
+  `legacyguard` 放行（PE 6.1、无 `ProcessPrng`、仅导入 `kernel32.dll`），
+  启动后 `/api/health` 与内嵌前端正常。
+
+  **仍未验证**：2008 R2 SP1 实机启动。这是本次发布要解决的事，不是已经
+  解决的事。
+
+下一版本的内容见 [TODO.md](./TODO.md)。
+
+---
+
 ## [0.1.0] — 2026-10-20
 
 首个可用版本。Go + React 单二进制，请求保存在 SQLite，支持发布 mock 端点。
@@ -55,57 +114,3 @@
 - 未做 race detector 验证（环境缺 cgo/gcc）。
 
 ---
-
-## [未发布]
-
-### 新增
-
-- **CI 与发版（`v0.1.1-win2008r2`）。** 这个分支此前只靠人工验证：构建脚本
-  存在，但没有 CI，也没有发布产物。新装两个工作流：
-
-  | 文件 | 触发 | 内容 |
-  | ---- | ---- | ---- |
-  | `legacy-ci.yml` | 推送到本分支、PR | 工具链必须是 1.20 → 依赖 pin 校验 → `vet` / `test` → 构建前端与二进制 → `legacyguard` → 启动并检查 `/api/health` 与内嵌前端 |
-  | `legacy-release.yml` | `v*-win2008r2` tag | 打包 zip + `checksums.txt`，解包后复核二进制，用 `gh release create` 发布 |
-
-  tag 带 `-win2008r2` 后缀，是为了在主分支的 `v0.2.0` 旁边一眼区分，并把
-  「只能跑在旧系统上」写进版本号。
-
-### 修复
-
-- **构建后的兼容性校验形同虚设。** 脚本原本只检查 PE 头的最低系统版本是否为
-  6.x，理由是「Go 1.21+ 会写成 10.0」。实测：**Go 1.24 构建的二进制 PE 头
-  仍然是 6.1**；它通过 `LoadLibrary` + `GetProcAddress` 在运行时解析
-  `ProcessPrng`，导入表里根本不含这个符号。于是 PE 头与导入表都「看起来
-  合法」，进程在 2008 R2 上仍然秒退且没有任何输出。
-
-  新增 `scripts/legacyguard`，三项检查：PE 最低系统版本为 6.x、全文不含
-  `ProcessPrng` / `bcryptprimitives`、静态导入的 DLL 都在 NT 6.1 白名单内。
-  第三条用白名单而非黑名单：新增导入必须先确认目标系统有该 DLL。
-
-  构建脚本（`.ps1` / `.sh`）都改为调用它；CI 与发版流程也各自跑一次。
-  对主分支二进制运行会 `FAIL: binary references "ProcessPrng"`，对兼容包
-  则放行。
-
-### 变更
-
-- 补上 `LICENSE`（此前本分支缺该文件，打包会失败）。README 增加了 License
-  小节。
-
-- **发布 `v0.1.1-win2008r2`**（2026-10-22）。首个带 CI 与自动化发布的兼容包。
-
-  | 项 | 值 |
-  | -- | -- |
-  | 资产 | `reqbox_0.1.1_windows_amd64_legacy.zip`（4.85 MB）+ `checksums.txt` |
-  | 内容 | `reqbox.exe`、`LICENSE`、`README.md`、`LEGACY-WINDOWS.md` |
-  | 版本 | `reqbox 0.1.1` |
-  | 工具链 | Go 1.20.14 |
-
-  发布后用 Release 的下载链接复核过：SHA-256 与 `checksums.txt` 一致，
-  `legacyguard` 放行（PE 6.1、无 `ProcessPrng`、仅导入 `kernel32.dll`），
-  启动后 `/api/health` 与内嵌前端正常。
-
-  **仍未验证**：2008 R2 SP1 实机启动。这是本次发布要解决的事，不是已经
-  解决的事。
-
-下一版本的内容见 [TODO.md](./TODO.md)。当前唯一待决策项是项目改名。

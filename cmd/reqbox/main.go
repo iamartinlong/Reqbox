@@ -18,12 +18,17 @@ import (
 	"time"
 
 	reqbox "reqbox"
+	"reqbox/internal/config"
 	"reqbox/internal/logging"
 	"reqbox/internal/server"
 	"reqbox/internal/store"
 )
 
 func main() {
+	// Before anything is printed: with QuickEdit on, the first drag-select would
+	// freeze the window the operator is trying to read.
+	allowConsoleCopy()
+
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
@@ -31,16 +36,31 @@ func main() {
 }
 
 func run() error {
+	// The config file is read before the flags are declared so its values can
+	// become the flag defaults. That keeps the precedence in one place: a flag
+	// beats the file because the flag's default *is* the file's value, and
+	// anything the operator types overrides it.
+	cfg, cfgPath, cfgErr := config.Load()
+	if cfgErr != nil {
+		// A broken config must not be silently ignored: the operator would edit
+		// a file that appears to have no effect. Say what is wrong and stop.
+		return cfgErr
+	}
+
+	addrDefault := envOr("REQBOX_ADDR", cfg.Addr(config.DefaultAddr))
+	noAuthDefault := !cfg.AuthEnabled()
+
 	var (
 		// Loopback by default: this is a single-user tool, and binding every
 		// interface exposes the workspace to the whole network by accident.
-		addr    = flag.String("addr", envOr("REQBOX_ADDR", "127.0.0.1:5178"), "listen address; use :5178 or 0.0.0.0:5178 to accept remote connections")
-		dbPath  = flag.String("db", envOr("REQBOX_DB", defaultDBPath()), "path to the SQLite database file")
-		static  = flag.String("static", envOr("REQBOX_STATIC", ""), "serve the web UI from this directory instead of the embedded build")
-		token   = flag.String("token", envOr("REQBOX_TOKEN", ""), "API token; generated and printed once if empty")
-		noAuth  = flag.Bool("no-auth", false, "disable the API token check (anyone who can reach the port gets full access)")
-		verbose = flag.Bool("verbose", false, "log every HTTP request")
-		showVer = flag.Bool("version", false, "print the version and exit")
+		addr      = flag.String("addr", addrDefault, "listen address; use :5178 or 0.0.0.0:5178 to accept remote connections")
+		dbPath    = flag.String("db", envOr("REQBOX_DB", dbOrDefault(cfg)), "path to the SQLite database file")
+		static    = flag.String("static", envOr("REQBOX_STATIC", ""), "serve the web UI from this directory instead of the embedded build")
+		token     = flag.String("token", envOr("REQBOX_TOKEN", cfg.Auth.Token), "API token; generated and printed once if empty")
+		noAuth    = flag.Bool("no-auth", noAuthDefault, "disable the API token check (anyone who can reach the port gets full access)")
+		verbose   = flag.Bool("verbose", cfg.Logging.Verbose, "log every HTTP request")
+		noBrowser = flag.Bool("no-browser", false, "do not open a browser at startup")
+		showVer   = flag.Bool("version", false, "print the version and exit")
 	)
 	flag.Parse()
 
@@ -81,19 +101,45 @@ func run() error {
 		}
 	}
 
+	// Say which database is in use. After a rename this is the difference
+	// between "it found my data" and "it quietly started empty".
+	log.Info("using database", "path", *dbPath)
+	// Same reasoning for the config file: "I read it" versus "I did not find it"
+	// is the only way to explain why an edit had no effect.
+	if cfgErr == nil {
+		if _, statErr := os.Stat(cfgPath); statErr == nil {
+			log.Info("using config file", "path", cfgPath)
+		} else {
+			log.Info("no config file; using defaults", "looked in", cfgPath)
+		}
+	}
+
+	listener, actualAddr, err := listenWithFallback(*addr, cfg.AutoPortEnabled())
+	if err != nil {
+		return fmt.Errorf("listen on %s: %w", *addr, err)
+	}
+	if actualAddr != *addr {
+		// Never move quietly. The URL below is printed with the real port, but
+		// someone reading the config file needs to know it was not the one used.
+		log.Warn("requested port is in use; listening on the next free one",
+			"requested", *addr, "using", actualAddr)
+	}
+
 	handler := server.New(st, log, server.Config{
-		Addr:      *addr,
+		Addr:      actualAddr,
 		StaticDir: *static,
 		Dev:       os.Getenv("REQBOX_DEV") == "1",
 		Auth:      auth,
 	}, assets)
 
-	// Print the token before serving, so the operator has it the moment the
-	// banner appears.
-	auth.LogToken(log, *addr)
+	// Resolve the URL once, after the listener exists, and print the token with
+	// it. Doing this before listening is why `-addr 127.0.0.1:0` used to print a
+	// login link pointing at port 0.
+	baseURL := displayURL(listener.Addr().String())
+	auth.LogToken(log, baseURL)
 
 	srv := &http.Server{
-		Addr:              *addr,
+		Addr:              actualAddr,
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       120 * time.Second,
@@ -104,15 +150,40 @@ func run() error {
 
 	// Say so when the address accepts remote connections. Binding widely is
 	// sometimes intended, but it is no longer the default.
-	if !listensOnLoopbackOnly(*addr) {
+	if !listensOnLoopbackOnly(actualAddr) {
 		log.Warn("listening on a non-loopback address; anyone who can reach this port can reach the API",
-			"addr", *addr)
+			"addr", actualAddr)
 	}
 
-	if err := listenAndServe(ctx, srv, log); err != nil {
+	// Open the browser after the listener is bound, so the page cannot race the
+	// server and show a connection error. The sign-in URL always works here
+	// because it carries the token; without one (a restart) the bare URL still
+	// lands on the unlock screen.
+	if cfg.OpenBrowserEnabled() && !*noBrowser {
+		target := baseURL + "/"
+		if loginURL := auth.LoginURL(baseURL); loginURL != "" {
+			target = loginURL
+		}
+		if err := openBrowser(target); err != nil {
+			log.Debug("could not open a browser", "error", err, "url", target)
+		} else {
+			log.Info("opened the browser", "url", target)
+		}
+	}
+
+	if err := serve(ctx, srv, listener, log); err != nil {
 		return err
 	}
 	return nil
+}
+
+// dbOrDefault resolves the database path, letting the config file override the
+// built-in location only when it actually sets one.
+func dbOrDefault(cfg config.File) string {
+	if cfg.Storage.DB != "" {
+		return cfg.Storage.DB
+	}
+	return defaultDBPath()
 }
 
 // listensOnLoopbackOnly reports whether addr binds just the loopback interface.
@@ -132,12 +203,12 @@ func listensOnLoopbackOnly(addr string) bool {
 	return strings.EqualFold(host, "localhost")
 }
 
-func listenAndServe(ctx context.Context, srv *http.Server, log *logging.Logger) error {
-	ln, err := net.Listen("tcp", srv.Addr)
-	if err != nil {
-		return fmt.Errorf("listen on %s: %w", srv.Addr, err)
-	}
-
+// serve runs the HTTP server on an already-bound listener until ctx is done.
+//
+// The listener is bound by the caller so the port is known before anything is
+// printed or opened: the sign-in URL and the browser tab must point at the real
+// port, including when the configured one was busy and the server moved.
+func serve(ctx context.Context, srv *http.Server, ln net.Listener, log *logging.Logger) error {
 	url := displayURL(ln.Addr().String())
 	log.Info("Reqbox started", "url", url, "version", server.Version)
 
