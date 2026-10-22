@@ -249,3 +249,8 @@ Verified by test or by hand, and covered by the suites where possible:
 - Omitted `verifyTls` / `followRedirects` keep their secure defaults; only an
   explicit `false` disables them.
 
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+

@@ -1,0 +1,138 @@
+# CI for the legacy/win2008r2 branch.
+#
+# This branch exists for one reason: Go 1.21+ emits binaries that call
+# ProcessPrng, which Windows Server 2008 R2 does not have, so the process exits
+# before printing anything. That makes the toolchain version a correctness
+# property, not a preference, and it is why this workflow pins Go 1.20.14
+# explicitly instead of reading it from go.mod.
+#
+# The checks mirror docs/LEGACY-WINDOWS.md:
+#   1. the dependency pins have not drifted (go mod tidy silently breaks them),
+#   2. the code builds and tests with Go 1.20,
+#   3. the produced binary is actually loadable on NT 6.1 (legacyguard),
+#   4. the dependency-free binary starts and serves its embedded UI.
+name: Legacy CI (Windows Server 2008 R2)
+
+on:
+  push:
+    branches: [legacy/win2008r2]
+  pull_request:
+    branches: [legacy/win2008r2]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: legacy-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  legacy:
+    name: Go 1.20 build and compatibility guard
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Pinned, not from go.mod: a newer toolchain would compile and produce a
+      # binary that cannot start on the target machine.
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.20.14"
+          cache: true
+
+      # Releases after Go 1.20 refuse to run this module at all; pinning the
+      # toolchain also stops a future image default from changing the answer.
+      - name: Confirm the toolchain is Go 1.20
+        shell: bash
+        run: |
+          got=$(go version)
+          echo "$got"
+          case "$got" in
+            *go1.20*) ;;
+            *) echo "expected Go 1.20, got: $got"; exit 1 ;;
+          esac
+
+      # go mod tidy or go get will raise these to versions needing Go 1.23+,
+      # at which point the branch silently stops building. Cheap check, so run
+      # it before anything slow.
+      - name: Check compatibility pins
+        shell: pwsh
+        run: ./scripts/check-legacy-pins.ps1
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./... -count=1
+
+      # The guard has its own tests: a check that only passes is not a check.
+      - name: Test the compatibility guard
+        run: go test ./scripts/legacyguard -count=1
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.5.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      # The legacy branch has no front-end test suite of its own; it reuses the
+      # same web/dist as main, so building it is the whole check.
+      - name: Build web client
+        working-directory: web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Build the legacy binary
+        shell: pwsh
+        run: ./scripts/build-legacy.ps1 -Version "ci-${{ github.run_number }}" -SkipWeb
+
+      # Compiling is not running. This catches a broken embed, a bad default
+      # port and an unreadable database, on the same OS family as the target.
+      - name: Smoke test the binary
+        shell: pwsh
+        run: |
+          $exe = "dist/reqbox-win-legacy-amd64.exe"
+          $db = Join-Path $env:RUNNER_TEMP "legacy-ci.db"
+
+          $proc = Start-Process -FilePath $exe `
+            -ArgumentList @("-no-auth", "-addr", "127.0.0.1:5199", "-db", $db) `
+            -PassThru -RedirectStandardOutput "server.log" -RedirectStandardError "server.err"
+          try {
+            $ok = $false
+            for ($i = 0; $i -lt 40; $i++) {
+              try {
+                $health = Invoke-RestMethod "http://127.0.0.1:5199/api/health"
+                $ok = $true
+                break
+              } catch {
+                Start-Sleep -Milliseconds 500
+              }
+            }
+            Get-Content "server.log" -ErrorAction SilentlyContinue
+            Get-Content "server.err" -ErrorAction SilentlyContinue
+            if (-not $ok) { throw "the binary never answered /api/health" }
+            if ($health.status -ne "ok") { throw "health status: $($health.status)" }
+            Write-Host "health: $($health | ConvertTo-Json -Compress)"
+
+            $index = (Invoke-WebRequest "http://127.0.0.1:5199/" -UseBasicParsing).Content
+            if ($index -notmatch '<div id="root">') {
+              throw "the embedded web client is missing from the binary"
+            }
+            Write-Host "embedded web client: present"
+          }
+          finally {
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+          }
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: reqbox-win-legacy-amd64
+          path: dist/reqbox-win-legacy-amd64.exe
+          if-no-files-found: error
+          retention-days: 7

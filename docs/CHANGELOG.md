@@ -56,6 +56,40 @@
 
 ---
 
-## 未发布
+## [未发布]
+
+### 新增
+
+- **CI 与发版（`v0.1.1-win2008r2`）。** 这个分支此前只靠人工验证：构建脚本
+  存在，但没有 CI，也没有发布产物。新装两个工作流：
+
+  | 文件 | 触发 | 内容 |
+  | ---- | ---- | ---- |
+  | `legacy-ci.yml` | 推送到本分支、PR | 工具链必须是 1.20 → 依赖 pin 校验 → `vet` / `test` → 构建前端与二进制 → `legacyguard` → 启动并检查 `/api/health` 与内嵌前端 |
+  | `legacy-release.yml` | `v*-win2008r2` tag | 打包 zip + `checksums.txt`，解包后复核二进制，用 `gh release create` 发布 |
+
+  tag 带 `-win2008r2` 后缀，是为了在主分支的 `v0.2.0` 旁边一眼区分，并把
+  「只能跑在旧系统上」写进版本号。
+
+### 修复
+
+- **构建后的兼容性校验形同虚设。** 脚本原本只检查 PE 头的最低系统版本是否为
+  6.x，理由是「Go 1.21+ 会写成 10.0」。实测：**Go 1.24 构建的二进制 PE 头
+  仍然是 6.1**；它通过 `LoadLibrary` + `GetProcAddress` 在运行时解析
+  `ProcessPrng`，导入表里根本不含这个符号。于是 PE 头与导入表都「看起来
+  合法」，进程在 2008 R2 上仍然秒退且没有任何输出。
+
+  新增 `scripts/legacyguard`，三项检查：PE 最低系统版本为 6.x、全文不含
+  `ProcessPrng` / `bcryptprimitives`、静态导入的 DLL 都在 NT 6.1 白名单内。
+  第三条用白名单而非黑名单：新增导入必须先确认目标系统有该 DLL。
+
+  构建脚本（`.ps1` / `.sh`）都改为调用它；CI 与发版流程也各自跑一次。
+  对主分支二进制运行会 `FAIL: binary references "ProcessPrng"`，对兼容包
+  则放行。
+
+### 变更
+
+- 补上 `LICENSE`（此前本分支缺该文件，打包会失败）。README 增加了 License
+  小节。
 
 下一版本的内容见 [TODO.md](./TODO.md)。当前唯一待决策项是项目改名。

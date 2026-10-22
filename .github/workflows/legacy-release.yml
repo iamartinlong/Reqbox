@@ -1,0 +1,172 @@
+# Release pipeline for the legacy/win2008r2 branch.
+#
+# Tags on this branch look like `v0.1.1-win2008r2`: the suffix keeps them
+# clearly separate from main's releases, and the operating system is stated in
+# the tag itself because the artifact only exists for that reason.
+#
+#   git tag v0.1.1-win2008r2 && git push origin v0.1.1-win2008r2
+#
+# The release is built twice on purpose: GoReleaser produces the archive and the
+# checksum, but GoReleaser knows nothing about ProcessPrng, so the binary is also
+# checked by legacyguard before publishing. A tag that would ship a binary which
+# cannot start on 2008 R2 fails here rather than on the customer's server.
+name: Legacy Release (Windows Server 2008 R2)
+
+on:
+  push:
+    tags:
+      - "v*-win2008r2"
+  # Manual runs build the archive without publishing, to check the configuration.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: legacy-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Hard requirement: Go 1.21+ cannot produce a binary that runs on 6.1.
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.20.14"
+          cache: true
+
+      - name: Confirm the toolchain is Go 1.20
+        shell: bash
+        run: |
+          got=$(go version)
+          echo "$got"
+          case "$got" in
+            *go1.20*) ;;
+            *) echo "expected Go 1.20, got: $got"; exit 1 ;;
+          esac
+
+      - name: Check compatibility pins
+        shell: pwsh
+        run: ./scripts/check-legacy-pins.ps1
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.5.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Build web client
+        working-directory: web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      # A tag must not publish code that would fail CI.
+      - name: Test before publishing
+        run: go test ./... -count=1
+
+      # Built by the branch's own script so the version check, the PE check and
+      # legacyguard all apply exactly as they do locally.
+      - name: Build the legacy binary
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_type }}" -eq "tag") {
+            $version = "${{ github.ref_name }}" -replace '^v', '' -replace '-win2008r2$', ''
+          } else {
+            # workflow_dispatch builds a snapshot: github.ref_name is a branch
+            # name here, and "legacy/win2008r2" would put a slash in the zip name.
+            $version = "0.0.0-snapshot-${{ github.run_number }}"
+          }
+          Write-Host "version: $version"
+          ./scripts/build-legacy.ps1 -Version $version -SkipWeb
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      # Archives are built here rather than by GoReleaser: GoReleaser would try
+      # to cross-compile for every platform, and this branch ships exactly one
+      # artifact. The release body is taken from docs/release-notes when present.
+      - name: Assemble release assets
+        shell: pwsh
+        run: |
+          $version = $env:VERSION
+          $stage = "stage/reqbox_${version}_windows_amd64_legacy"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+
+          Copy-Item "dist/reqbox-win-legacy-amd64.exe" "$stage/reqbox.exe"
+          Copy-Item LICENSE, README.md $stage
+          Copy-Item docs/LEGACY-WINDOWS.md $stage
+
+          $zip = "dist/reqbox_${version}_windows_amd64_legacy.zip"
+          Compress-Archive -Path "$stage/*" -DestinationPath $zip -Force
+          Write-Host "archive: $zip"
+
+          # Same name and shape as a main-branch checksums file, so the
+          # verification command is identical for every download.
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          $name = Split-Path $zip -Leaf
+          "$hash  $name" | Out-File -FilePath "dist/checksums.txt" -Encoding ascii
+          Get-Content "dist/checksums.txt"
+
+      # Run the guard against the exact file that was just archived: unzipping
+      # it first proves the archive contains the checked binary.
+      - name: Verify the archived binary
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP "unpack"
+          Expand-Archive -Path (Get-ChildItem "dist/*.zip").FullName -DestinationPath $dir -Force
+          Get-ChildItem $dir | Select-Object Name, Length
+          go run ./scripts/legacyguard -exe (Join-Path $dir "reqbox.exe")
+          if ($LASTEXITCODE -ne 0) { throw "legacyguard rejected the archived binary" }
+          & (Join-Path $dir "reqbox.exe") -version
+
+      - name: Pick release notes
+        id: notes
+        shell: bash
+        run: |
+          if [ -f "docs/release-notes/${GITHUB_REF_NAME}.md" ]; then
+            echo "file=docs/release-notes/${GITHUB_REF_NAME}.md" >> "$GITHUB_OUTPUT"
+          else
+            echo "file=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish
+        if: github.event_name == 'push'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $notes = "${{ steps.notes.outputs.file }}"
+          if (-not $notes) { $notes = "docs/LEGACY-WINDOWS.md" }
+
+          # Named $ghArgs, not $args: the latter is a PowerShell automatic
+          # variable and assigning to it is a trap.
+          $ghArgs = @(
+            "release", "create", "${{ github.ref_name }}",
+            "--title", "Reqbox $env:VERSION for Windows Server 2008 R2",
+            "--notes-file", $notes,
+            "dist/reqbox_$($env:VERSION)_windows_amd64_legacy.zip",
+            "dist/checksums.txt"
+          )
+
+          # gh is preinstalled on the runners; using it avoids a custom API client.
+          & gh @ghArgs
+          if ($LASTEXITCODE -ne 0) { throw "gh release create failed" }
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: legacy-release-artifacts
+          path: |
+            dist/*.zip
+            dist/checksums.txt
+          if-no-files-found: warn
+          retention-days: 7

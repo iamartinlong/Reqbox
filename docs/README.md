@@ -7,11 +7,17 @@
 
 | 文档 | 用途 | 什么时候看 |
 | ---- | ---- | ---------- |
-| [TODO.md](./TODO.md) | 待办事项，按优先级排列 | 接手项目、决定下一步做什么 |
-| [DECISIONS.md](./DECISIONS.md) | 决策记录（DR） | 想知道某个设计为何如此、或想推翻它 |
-| [CHANGELOG.md](./CHANGELOG.md) | 已完成的改动与修复 | 了解项目演进、排查「什么时候变的」 |
-| [DEVELOPMENT.md](./DEVELOPMENT.md) | 本地开发、构建、验证流程 | 第一次跑起来、或搭建环境 |
-| [LEGACY-WINDOWS.md](./LEGACY-WINDOWS.md) | Windows Server 2016 之前系统的兼容方案 | 部署到旧版 Windows 服务器 |
+| [TODO.md](./TODO.md) | 本分支独有的事项：2008 R2 实机验证、工具链约束 | 接手本分支、准备发版 |
+| [LEGACY-WINDOWS.md](./LEGACY-WINDOWS.md) | 兼容性原理、构建步骤、CI 与发版 | 部署到旧版 Windows 服务器 |
+| [CHANGELOG.md](./CHANGELOG.md) | 已完成的改动与修复 | 了解本分支的演进 |
+| [DEVELOPMENT.md](./DEVELOPMENT.md) | 本地开发与验证流程 | 第一次跑起来 |
+| [DECISIONS.md](./DECISIONS.md) | 决策记录（DR） | 想知道某个设计为何如此 |
+| [HANDOFF.md](./HANDOFF.md) | 交接说明：本分支特有的坑与验证状态 | 刚接手本分支 |
+
+> 本分支的文档只保留与兼容性相关的部分。主分支的 **WORKLOG**、
+> **release-notes**、**PLAN** 与 **AUDIT** 不在本分支重复维护——
+> 那些内容不因工具链不同而不同。发布说明按 tag 放在
+> `docs/release-notes/`，只写与旧系统有关的部分。
 
 ## 三条约定
 

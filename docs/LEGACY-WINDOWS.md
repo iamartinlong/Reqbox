@@ -16,12 +16,15 @@
 | ---- | ---- | -------- | ------ |
 | Windows Server 2012 R2 | NT 6.3 | 未验证 | ✅ **已实测通过** |
 | Windows Server 2012 | NT 6.2 | 未验证 | ✅ 预期可用（同工具链范围） |
-| Windows Server 2008 R2 | NT 6.1 | 预期失败 | ✅ 兼容包为此构建 |
+| Windows Server 2008 R2 **SP1** | NT 6.1 | 预期失败 | ⚠️ **构建已验证，实机待测（`v0.1.1-win2008r2`）** |
 | Windows 8.1 / 8 / 7 | NT 6.3 / 6.2 / 6.1 | 预期失败 | ✅ 同内核范围 |
 | Windows 10 / Server 2016+ | NT 10.0 | ✅ 推荐 | ✅ 可用 |
 
 > **实测记录**（2026-10-20）：Windows Server 2012 R2 上直接运行兼容包，
 > 服务正常启动，接口与前端均可用。
+>
+> **待办**（2026-10-22）：Windows Server 2008 R2 SP1 实机验证。构建侧证据
+> 齐备（见「已验证 / 未验证」），但尚未在真机上启动过。
 
 ## 为什么主分支跑不了
 
@@ -99,8 +102,8 @@ log.Info("Reqbox started", "url", url, "version", server.Version)
 
 ## 构建兼容包
 
-分支内提供了专用脚本，它会**校验工具链版本**并在构建后**校验 PE 头**，
-避免“编译成功但目标机器跑不了”的静默失败：
+分支内提供了专用脚本，它会**校验工具链版本**并在构建后**校验产物是否真能
+在 NT 6.1 上启动**，避免「编译成功但目标机器跑不了」的静默失败：
 
 ```powershell
 .\scripts\build-legacy.ps1 -GoRoot D:\go120\go -Version 0.1.0
@@ -113,6 +116,37 @@ GOROOT_120=/usr/local/go1.20 ./scripts/build-legacy.sh --skip-web
 ```
 
 用错工具链时脚本会直接拒绝并说明原因，而不是产出坏二进制。
+
+### 只校验 PE 头是不够的
+
+这是本轮修正的一个实际缺陷。原脚本检查 PE 头的最低系统版本是否为 6.x，
+理由是「Go 1.21+ 会写成 10.0，所以能拦住」。
+
+**实测不成立**：Go 1.24 构建的二进制，PE 头写的仍是 **6.1**。它靠
+`LoadLibrary` + `GetProcAddress` 在运行时解析 `ProcessPrng`，导入表里根本
+不出现这个函数名，所以 PE 头与导入表都「看起来合法」，进程在 2008 R2 上
+仍然秒退。
+
+因此新增 `scripts/legacyguard`，三项独立检查：
+
+| 检查 | 覆盖的失败模式 |
+| ---- | -------------- |
+| PE 最低系统版本为 6.x | 链接器层面声明了不兼容 |
+| 全文不含 `ProcessPrng` / `bcryptprimitives` | 新版工具链的运行时依赖 |
+| 静态导入的 DLL 都在 NT 6.1 白名单内 | 意外的 UCRT / api-ms-win-* 依赖 |
+
+第三条是白名单而非黑名单：出现新导入时构建失败，必须先确认该 DLL 在
+2008 R2 上存在，再把它加进白名单。
+
+它自己有 3 个单元测试，覆盖「拒绝 ProcessPrng」与「放行干净的导入表」两个
+方向——只验证放行的测试等于没测试。
+
+```powershell
+go run ./scripts/legacyguard -exe dist/reqbox-win-legacy-amd64.exe
+```
+
+对主分支二进制运行会得到 `FAIL: binary references "ProcessPrng"`，这正是它
+该拦的东西。
 
 ### 依赖锁定校验
 
@@ -132,13 +166,42 @@ GOROOT_120=/usr/local/go1.20 ./scripts/build-legacy.sh --skip-web
 | 项 | 状态 |
 | -- | ---- |
 | 兼容构建脚本拦截错误工具链 | ✅ 实测（Go 1.24 被拒绝） |
-| 兼容构建脚本产出 PE 6.1 | ✅ 实测 |
+| `legacyguard` 放行正确产物（PE 6.1、无 ProcessPrng、仅 kernel32） | ✅ 实测 |
+| `legacyguard` 拒绝主分支产物（含 ProcessPrng） | ✅ 实测 |
+| `legacyguard` 单元测试 | ✅ 3 个 |
 | 依赖锁定校验能发现漂移 | ✅ 实测（故意改版本后 exit 1） |
 | Go 1.20 下 `go build` | ✅ |
-| Go 1.20 下 `go test ./...` | ✅ 41 个测试全绿 |
-| 本机（Win10）启动、健康检查、嵌入前端、预置数据 | ✅ |
+| Go 1.20 下 `go test ./...` | ✅ 61 个测试全绿 |
+| 本机（Win10）启动、健康检查、嵌入前端 | ✅ |
 | **Windows Server 2012 R2 实机运行** | ✅ **2026-10-20 确认** |
-| Windows Server 2008 R2 实机运行 | ❌ 未直接验证（同工具链范围，预期可用） |
+| **Windows Server 2008 R2 实机运行** | ❌ **待验证（本轮发布的目的）** |
+
+> 2008 R2 的验证状态是这份文档里唯一还没打勾的关键项。构建侧的证据
+> （工具链 1.20.14、PE 6.1、无 `ProcessPrng`、导入表只有 `kernel32.dll`）
+> 都指向可用，但「没在真机上跑过」就是没跑过，不应写成已验证。
+
+## CI 与发版
+
+legacy 分支现在有自己的工作流，都在 `.github/workflows/`：
+
+| 文件 | 触发 | 内容 |
+| ---- | ---- | ---- |
+| `legacy-ci.yml` | 推送到 `legacy/win2008r2`、PR | 确认工具链是 1.20 → 校验依赖 pin → `vet` / `test` → `legacyguard` 测试 → 构建前端 → 构建二进制 → `legacyguard` → 启动并打 `/api/health` 与 `/` |
+| `legacy-release.yml` | `v*-win2008r2` tag | 同上，然后打包 zip + `checksums.txt`，解包后用 `legacyguard` 复核，`gh release create` 发布 |
+
+发版：
+
+```bash
+git tag v0.1.1-win2008r2
+git push origin v0.1.1-win2008r2
+```
+
+tag 后缀 `-win2008r2` 是刻意加的：它让这个产物在主分支的 `v0.2.0` 旁边一眼
+可辨，也把「只能跑在旧系统上」这件事写进了版本号。
+
+发布说明优先取 `docs/release-notes/<tag>.md`，缺省用本文档。归档文件名
+`reqbox_<版本>_windows_amd64_legacy.zip` 与主分支的命名同构，所以校验命令
+是一样的。
 
 ## 长期保留与维护意图
 

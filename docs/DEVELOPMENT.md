@@ -70,7 +70,14 @@ cd web && pnpm dev          # 前端 :5173（代理到 :5178）
 
 ```bash
 go vet ./...        # 静态检查
-go test ./...       # 41 个测试
+go test ./...       # 61 个测试（含 legacyguard 的 3 个）
+```
+
+**必须用 Go 1.20 工具链**。用新版 Go 跑测试能通过，但产出的二进制在
+2008 R2 上会秒退：
+
+```bash
+GOTOOLCHAIN=go1.20.14 go test ./...
 ```
 
 前端：
@@ -79,7 +86,19 @@ go test ./...       # 41 个测试
 cd web
 pnpm exec tsc -b    # 类型检查
 pnpm lint           # oxlint
+pnpm build          # 构建产物 + 确认能编译
 ```
+
+### 改完兼容性相关代码后
+
+```powershell
+.\scripts\check-legacy-pins.ps1                                  # 依赖 pin
+.\scripts\build-legacy.ps1 -Version dev                          # 含 legacyguard
+go run ./scripts/legacyguard -exe dist/reqbox-win-legacy-amd64.exe
+```
+
+`legacyguard` 是唯一能拦住「PE 头好看但跑不了」的检查，见
+[LEGACY-WINDOWS.md](./LEGACY-WINDOWS.md)。CI 里同样会跑。
 
 ### 手工验证（自动化覆盖不到的部分）
 
@@ -101,7 +120,8 @@ pnpm lint           # oxlint
 CGO_ENABLED=1 go test -race ./...
 ```
 
-这条已记入 [TODO.md](./TODO.md)。
+**本分支的 CI 不跑 `-race`**（跑在 Windows 上，且与 2008 R2 兼容性无关）；
+主分支的 CI 已覆盖。若要在此分支验证，加一个 `ubuntu-latest` job 即可。
 
 ## 目录结构
 

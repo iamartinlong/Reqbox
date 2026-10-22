@@ -94,14 +94,13 @@ cd "$ROOT"
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 "$GO_EXE" build -trimpath -ldflags "$LDFLAGS" -o "$OUT" ./cmd/reqbox
 
 # --- verify ------------------------------------------------------------------
-# A wrong toolchain still produces a working-looking binary, so check the PE
-# minimum OS: 6.x means legacy Windows can load it, 10.0 means it cannot.
-PE_MAJOR=$(od -An -tu2 -j $(( $(od -An -tu4 -j 60 -N 4 "$OUT" | tr -d ' ') + 44 )) -N 2 "$OUT" | tr -d ' ')
-if [ "$PE_MAJOR" != "6" ]; then
-  echo "PE minimum OS major is '$PE_MAJOR', expected 6. The binary would not load on legacy Windows." >&2
-  exit 1
-fi
+# A wrong toolchain still produces a working-looking binary, so check what
+# actually determines whether it runs on the old systems. The PE header alone is
+# not enough: Go 1.21+ stamps 6.1 while resolving ProcessPrng at startup, so the
+# header looks fine and the process still dies on 2008 R2. `legacyguard` checks
+# the header, the forbidden runtime APIs, and the imported DLLs.
+cd "$ROOT"
+"$GO_EXE" run ./scripts/legacyguard -exe "$OUT"
 
-echo "==> PE minimum OS: 6.x (OK)"
 echo "==> built: $OUT"
 echo "==> done"

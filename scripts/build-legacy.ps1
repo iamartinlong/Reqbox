@@ -114,20 +114,23 @@ finally {
 }
 
 # --- verify the result -------------------------------------------------------
-# A wrong toolchain still produces a working-looking binary, so check the two
-# things that actually determine whether it runs on the old systems.
-$bytes = [IO.File]::ReadAllBytes($out)
-$peOff = [BitConverter]::ToInt32($bytes, 0x3C)
-$optOff = $peOff + 24
-$osMajor = [BitConverter]::ToUInt16($bytes, $optOff + 40)
-$osMinor = [BitConverter]::ToUInt16($bytes, $optOff + 42)
-
-# PE min OS 6.1 = Windows 7 / Server 2008 R2. Go 1.27+ stamps 10.0 here.
-if ($osMajor -ne 6) {
-    throw "PE minimum OS is $osMajor.$osMinor, expected 6.x. The binary would not load on legacy Windows."
+# A wrong toolchain still produces a working-looking binary, so check what
+# actually determines whether it runs on the old systems. The PE header alone is
+# not enough: Go 1.21+ stamps 6.1 as the minimum OS while resolving ProcessPrng
+# at startup, so the header looks fine and the process still dies on 2008 R2.
+# `legacyguard` checks the header, the forbidden runtime APIs, and the imported
+# DLLs against an allowlist of libraries that ship with NT 6.1.
+Push-Location $root
+try {
+    & $goExe run ./scripts/legacyguard -exe $out
+    if ($LASTEXITCODE -ne 0) {
+        throw "legacyguard rejected $out. Do not ship it — see docs/LEGACY-WINDOWS.md."
+    }
+}
+finally {
+    Pop-Location
 }
 
-Write-Host "==> PE minimum OS: $osMajor.$osMinor (OK)"
 Write-Host "==> built: $out"
 Write-Host "    $(& $goExe version)"
 Write-Host "==> done"

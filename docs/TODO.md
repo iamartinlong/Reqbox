@@ -4,158 +4,105 @@
 
 图例：`[ ]` 未开始 · `[~]` 进行中 · `[x]` 已完成
 
+> 主分支的待办在仓库的 `main` 上（`docs/TODO.md`），不在这里。本文件只
+> 记录**这个分支独有**的工作：兼容性、工具链与旧系统验证。
+
 ---
 
 <a id="p1"></a>
 
-## P1 · 待决策
+## P1 · 待验证（本分支唯一的关键项）
 
-### [ ] 项目改名（阻塞其他改名工作）
+### [ ] Windows Server 2008 R2 SP1 实机验证　`0.1 天`
 
-**现状**：项目、Go module、二进制、环境变量、数据库路径全部叫 `reqbox`；
-远端仓库叫 `SuperGet`（随手取的）。三者不一致。
+这是本分支存在的理由，也是唯一还没打勾的验证项。
 
-**为什么现在不做**：改名是破坏性改动，会同时影响 module 路径、二进制名、
-已部署的脚本、用户本地的数据目录。一旦有真实使用者，成本会显著上升。
-所以它是一个需要先决策、再动手的事项。
+**现状**：构建侧证据齐备，但没有在 2008 R2 上启动过。
 
-**候选名及占用核查结果**（2026-10 用 pkg.go.dev / 网页搜索确认）：
+| 证据 | 状态 |
+| ---- | ---- |
+| Go 1.20.14 构建 | ✅ `go version` 已确认 |
+| `go test ./...` | ✅ 61 个测试全绿 |
+| PE 最低系统版本 | ✅ 6.1 |
+| 全文无 `ProcessPrng` / `bcryptprimitives` | ✅ `legacyguard` |
+| 静态导入 | ✅ 仅 `kernel32.dll`（42 个函数） |
+| Win10 上启动、健康检查、嵌入前端 | ✅ |
+| **2008 R2 SP1 实机启动** | ❌ |
 
-| 候选 | 核查结果 |
-| ---- | -------- |
-| `patchbay` | 已占用：Go 生态有 5+ 个同名模块 |
-| `shunt` | 已占用：多个模块 |
-| `spigot` | 已占用：18 个模块，且 Minecraft 联想过强 |
-| `apibench` | 已占用：同名 App |
-| `apiforge` | 已占用：同名公司与多个项目 |
-| `airlock` | 已占用：已有同名 HTTP 客户端，定位几乎重复 |
-| `apibay` | 已占用：撞 The Pirate Bay 的 API |
-| **`reqbox`** | 未发现占用（推荐） |
-| **`hatchbox`** | 未发现占用 |
+**怎么验证**：
 
-**推荐 `reqbox`**：直指 request，与 UI 的 Requests 一致，短、好拼、终端里好敲。
+1. 从 Releases 下载 `reqbox_<版本>_windows_amd64_legacy.zip`，解压。
+2. 在命令行（不要双击）运行 `reqbox.exe -version`。
+   应输出 `reqbox <版本>`。若窗口一闪而过、没有任何输出，说明仍是
+   `ProcessPrng` 类问题，把输出贴到 issue。
+3. 运行 `reqbox.exe -db .\data\reqbox.db -verbose`，打开打印出的登录链接。
+4. 确认三件事：解锁页能出现、能新建并发送一条请求、`/mock/<slug>` 能访问。
 
-**三个方案，按代价从低到高**：
+**验收**：上面四步全部通过，然后把本文档与 `LEGACY-WINDOWS.md` 的表格改成
+「✅ 已实测通过」，并记下系统版本号与是否装了 SP1。
 
-1. **仅改仓库名**（零风险，推荐先做）
-   代码已统一为 `reqbox`；仓库迁移到 GitHub 并以全新状态发布。
-   不产生任何破坏。
-
-2. **只改展示名**
-   改 README 标题、UI 标题、`<title>`、User-Agent。
-   代码标识符、module、二进制、数据路径保持不变。
-   代价：代码与展示名不一致，后来者会困惑。
-
-3. **彻底改**
-   见下方完整清单。适合在有真实用户前一次到位。
-
-**彻底改的完整清单**（92 处 / 24 个文件，2026-10 核实）：
-
-```bash
-# 1. Go module 与全部内部 import
-go mod edit -module <name>
-# 然后替换所有 internal import 前缀：
-#   "reqbox/internal/..."  ->  "<name>/internal/..."
-
-# 2. 目录改名
-#   cmd/reqbox/  ->  cmd/<name>/
-
-# 3. 二进制与构建产物名
-#   scripts/build.ps1、scripts/build.sh 里的 -o 文件名
-#   .gitignore 里的 /reqbox、/reqbox.exe
-
-# 4. 运行时标识
-#   环境变量 REQBOX_ADDR / REQBOX_DB / REQBOX_STATIC / REQBOX_DEV
-#     -> <NAME>_*
-#   User-Agent "Reqbox/1.0"  (internal/runner/runner.go)
-#   导出文件名 "reqbox-export.json"（服务端与前端各一处）
-
-# 5. 前端存储键
-#   localStorage "reqbox-theme"、"reqbox-session"
-#   （改了会让老用户丢主题与发送设置，见下方迁移方案）
-
-# 6. 默认数据路径
-#   <exe>/data/reqbox.db
-#   ~/.config/reqbox/reqbox.db
-
-# 7. 文档与 UI 文案
-#   README.md、web/README.md、web/index.html <title>、
-#   web/src/App.tsx（标题与图标 aria）、embed.go 包注释
-```
-
-**必须一并处理：数据迁移。**
-默认库路径随名字变化后，老用户升级会「看不见」自己的数据。需要：
-
-- 启动时若新路径不存在、而旧路径 `reqbox.db` 存在，自动改用它并打印提示，
-  或直接复制过去；
-- localStorage 键名变更时，读取不到旧键就回退读旧键一次。
-
-**验收**：
-
-- [ ] 全新克隆能 `go build` 并 `go test ./...` 全绿
-- [ ] 老数据库仍能被打开（造一个旧名库，改名后启动验证）
-- [ ] 老 localStorage 的主题与发送设置仍在
-- [ ] `scripts/build.ps1 -All` 产出的文件名与新名一致
+**若失败**：先确认 `reqbox.exe -version` 是否有输出——有输出说明不是加载期
+问题，去看端口/数据库；没有输出则是加载期，问题在二进制本身。
 
 ---
 
-## P2 · 已知技术债
+## P2 · 技术债
 
-### [ ] 并发安全缺少 race detector 验证
+### [x] 兼容性校验只看 PE 头　`已修复（2026-10-22）`
 
-`go test -race` 需要 cgo，当前环境无 gcc。
-现有的并发结论来自 20 并发执行 / 15 并发写入的手工实测，不是检测器确认的。
+原构建脚本只检查 PE 头的最低系统版本是否为 6.x，注释里断言「Go 1.27+ 会写
+成 10.0」。实测不成立：**Go 1.24 构建的二进制 PE 头仍是 6.1**，而
+`ProcessPrng` 是通过 `LoadLibrary` 在运行时解析的，导入表里也没有它。于是
+两项检查都通过，程序在 2008 R2 上依然秒退。
 
-**验收**：在有 gcc 的机器（或 Linux CI）跑 `CGO_ENABLED=1 go test -race ./...` 并全绿。
+**已做**：新增 `scripts/legacyguard`（PE 头 + 全文禁用符号 + 导入 DLL 白名单），
+带 3 个单元测试；两个构建脚本、`legacy-ci.yml`、`legacy-release.yml` 都接上。
+详见 [LEGACY-WINDOWS.md](./LEGACY-WINDOWS.md)。
+
+### [ ] race detector 验证
+
+`go test -race` 需要 cgo，本机无 gcc。并发结论来自 20 并发执行 / 15 并发
+写入的手工实测，不是检测器确认的。
+
+**优先级低**：主分支已由 CI 覆盖；本分支的目标平台是 2008 R2，跑 `-race`
+需要另开 Linux runner，收益不明显。若要做，加一个 `ubuntu-latest` job 即可。
+
+**验收**：`CGO_ENABLED=1 go test -race ./...` 全绿。
+
+### [~] 前端无自动化测试　`不由本分支解决`
+
+本分支的 `web/` 与主分支是同一套源码，但主分支后来加了 Vitest（112 个用例）。
+兼容分支只接受最小改动，**不合并主分支的前端测试**，以免把新依赖带进
+Go 1.20 的构建约束里。
+
+**当前做法**：CI 里构建前端（`pnpm build`）作为唯一的自动检查，交互靠手工。
 
 ### [ ] 历史快照中的凭证为明文
 
 `requests` 表与 `history.request_snapshot` 都以明文保存 Bearer / Basic /
-API Key。这是「能重放」的前提，因此不是简单的脱敏就能解决。
+API Key。这是「能重放」的前提，脱敏不能解决。主分支已决定暂不加密，并在
+README 的 Known limits 中说明；本分支沿用该决定，但风险更高（旧系统通常
+在隔离内网，也通常疏于打补丁）。
 
-**若要处理，需要先定方向**：
-
-- 方案 A：保留明文，但把数据库文件权限收紧（当前 `0644`），并在 UI 明示风险；
-- 方案 B：用主密钥加密 `auth` 字段，重放时解密。需要引入密钥管理，复杂度显著上升。
-
-当前仅在 README 的 Known limits 中说明。
-
-### [ ] 前端无自动化测试
-
-只有 `tsc` 与 `oxlint` 把关，交互靠手工验证。
-`web/` 下没有测试框架。
-
-**验收**：至少覆盖「新建 → 保存 → 发送 → 发布」主流程。
+**若处理**，需要先定方向：保留明文但收紧文件权限并明示风险，或用主密钥
+加密 `auth` 字段。本分支不宜率先引入密钥管理。
 
 ---
 
 ## P3 · 功能缺口
 
-### [ ] 不支持 WebSocket / SSE
+与主分支相同，且**不在本分支实现**：SSE、WebSocket、Mock 转发请求体、
+请求链式调用、中英双语、分阶段耗时。这些都要求改 `internal/` 或前端源码，
+本分支的约定是只接受兼容性所需的最小改动。
 
-当前只有 HTTP。SSE 相对容易（读取流式响应）；WebSocket 需要独立的连接管理界面。
-
-### [ ] Mock 不转发调用方请求体
-
-已发布端点固定使用保存的 body，调用方的 payload 被忽略。
-若要做「透传代理」语义，需要区分 Mock（固定响应）与 Proxy（透传）两种模式。
-
-### [ ] 无请求链式调用 / 前置换算
-
-无法「先登录拿 token，再带着 token 请求」。目前只能靠环境变量手工粘贴。
+需要这些功能时，用主分支的构建（Windows Server 2016 及以上可用）。
 
 ---
 
 ## 已修复（供检索，不必重做）
 
-- TLS 校验可被静默关闭（`verifyTls` 缺省为 false）
-- Mock 会把保存的凭证发给调用方指定的主机
-- 跨站写入（CSRF）：无 Origin 校验
-- 请求无法移回「未分类」（`collectionId: null` 被忽略）
-- 导入会静默清空整个工作区，且无确认
-- 原生 `prompt` / `confirm` 在部分环境不可用或样式不一致
-- 新建草稿因空时间戳导致 400
-- 发布 mock 时未填 slug 会产生不可访问的端点
-- 切换请求时响应区残留上一个请求的结果
-- 请求地址栏比 SEND 按钮矮 13px
-- 对话框底部按钮贴边 / 溢出卡片
+- 兼容构建脚本不校验工具链版本（会静默产出坏二进制）
+- 构建后的兼容性校验只看 PE 头，拦不住 `ProcessPrng`
+- 分支缺 `LICENSE`，打包失败
+- 分支没有 CI、没有发布产物
+- 安全审计项：token 鉴权、默认监听 `127.0.0.1`、数据库 DACL 收紧（均从主分支移植，见 `51c7ac0`）
