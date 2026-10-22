@@ -1,0 +1,57 @@
+# Reqbox settings. Optional: without this file Reqbox uses the defaults below.
+#
+# Where this file lives matters. It is read from the folder containing the
+# executable, so it travels with a copied installation:
+#
+#     C:\Tools\reqbox\reqbox.exe
+#     C:\Tools\reqbox\reqbox.yaml     <- this file
+#
+# Precedence, highest first:
+#
+#     command-line flag  >  environment variable  >  this file  >  built-in default
+#
+# So `reqbox.exe -addr 127.0.0.1:6000` beats `server.port` below, and an existing
+# deployment that passes flags keeps working untouched after this file appears.
+#
+# Unknown keys are rejected on purpose: `auto_port` (with an underscore) fails
+# loudly instead of being silently ignored.
+
+server:
+  # Listen address. Loopback only by default; reaching Reqbox from another
+  # machine is a deliberate choice, and it logs a warning when you make it.
+  #
+  # Use `addr` for the full address, or `port` to change only the port and keep
+  # the host. Setting both is an error, because one of them would be ignored.
+  # addr: 127.0.0.1:5178
+  port: 5178
+
+  # When the port is already taken, move to the next free one (up to 20 ports)
+  # instead of refusing to start. The actual port is always logged, and the
+  # sign-in URL uses it. Set to false if something else depends on the exact
+  # port and a silent move would be worse than a clear failure.
+  autoPort: true
+
+  # Open the default browser at startup. This is the main way to sign in: the
+  # one-time link carries the token, so nothing has to be copied out of the
+  # console window. Set to false on a server, or use -no-browser.
+  openBrowser: true
+
+storage:
+  # SQLite file. Default: data/reqbox.db beside the executable, falling back to
+  # the OS config directory when that folder is not writable.
+  # db: data/reqbox.db
+
+auth:
+  # The API token check. Turning this off exposes every stored credential to
+  # anyone who can reach the port; Reqbox prints a warning when it is off.
+  enabled: true
+
+  # A fixed token you choose, instead of the one generated on first start.
+  # Must be at least 8 characters. Setting it here means the token lives in a
+  # plain file, which is weaker than the generated one — use it only when you
+  # need a value you can remember or script, for example in an isolated network.
+  # token: choose-your-own-token
+
+logging:
+  # Log every HTTP request, not just startup.
+  verbose: false

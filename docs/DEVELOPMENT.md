@@ -156,10 +156,13 @@ gcc）。本机验证不能替代 CI，反过来也一样。
 ## 目录结构
 
 ```
-cmd/reqbox/        入口：命令行参数、优雅关闭
-embed.go            //go:embed web/dist
+cmd/reqbox/        入口：命令行参数、配置加载、监听与优雅关闭
+  listen.go        端口绑定与占用时顺延
+  browser.go       启动时打开浏览器
+  console_*.go     Windows 控制台模式调整（其他平台为空实现）
+internal/config/   reqbox.yaml 解析
 internal/store/     SQLite schema、迁移、查询
-internal/runner/    模板解析、HTTP 执行、curl 渲染
+internal/runner/   模板解析、HTTP 执行、curl 渲染
 internal/server/    chi 路由、JSON API、mock 网关、SPA 托管
 web/src/
   components/       界面，每个文件一个区域
@@ -168,9 +171,22 @@ web/src/
 docs/               本目录
 .github/workflows/  ci.yml（每次推送/PR）与 release.yml（tag）
 .goreleaser.yaml    发版产物配置
+reqbox.example.yaml 配置文件示例，可直接改名使用
 ```
 
 ## 几个容易踩的点
+
+**配置文件只从二进制旁边读。** `reqbox.yaml` 的位置由 `os.Executable()`
+决定，不是当前工作目录。用 `go run` 时二进制在临时目录里，所以那边放的配置
+**不会生效**——启动日志会打印实际查找的路径，先看那一行。
+
+**配置优先级是「命令行 > 环境变量 > 文件 > 默认」。** 改文件后没变化，先确认
+是不是命令行或环境变量覆盖了它。日志里的 `using config file` 只说明读到了，
+不说明它的每个值都被采用。
+
+**端口冲突会自动顺延。** 默认最多试后 20 个端口，并打印
+`requested=... using=...`。依赖固定端口的东西（反向代理、书签）应该把
+`server.autoPort` 设为 `false`，让冲突变成明确失败而不是悄悄换端口。
 
 **数据库位置。** 默认在二进制旁边的 `data/reqbox.db`；若二进制位于临时目录
 （如 `go run` 的构建目录），会退回到系统配置目录。用 `-db` 显式指定可避免

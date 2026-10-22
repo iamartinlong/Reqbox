@@ -86,9 +86,18 @@ Open that URL and the token is exchanged for an HttpOnly session cookie, then
 removed from the address bar. The hash is stored in the database, so a restart
 keeps you signed in; the plaintext is only ever printed once.
 
+**A browser opens automatically at startup**, at the sign-in link when there is
+one. That is the intended way in: the token never has to be copied out of a
+console window, which on Windows is awkward at best. `-no-browser` turns it off
+(also `server.openBrowser: false`).
+
 The server listens on **127.0.0.1 only** by default. Reaching it from another
 machine is a deliberate choice, so it takes an explicit `-addr` (for example
 `-addr :5178` or `-addr 0.0.0.0:5178`); doing so logs a warning.
+
+**If the port is busy, Reqbox moves to the next free one** instead of refusing to
+start, and logs both ports. The sign-in URL always uses the port actually bound.
+Set `server.autoPort: false` to make a busy port a hard failure instead.
 
 Without a token, every `/api` call returns 401. Two routes stay public on
 purpose: `/api/health` (the header's online indicator) and `/mock/*` (published
@@ -96,15 +105,41 @@ mocks exist to be called by other people).
 
 Flags (each also has an environment variable):
 
-| Flag        | Env              | Default                     | Meaning                              |
-| ----------- | ---------------- | --------------------------- | ------------------------------------ |
-| `-addr`     | `REQBOX_ADDR`   | `127.0.0.1:5178`            | Listen address (loopback only)       |
-| `-db`       | `REQBOX_DB`     | `./data/reqbox.db`         | SQLite file (created if missing)     |
-| `-static`   | `REQBOX_STATIC` | —                           | Serve the UI from a directory        |
-| `-token`    | `REQBOX_TOKEN`  | generated                   | Fixed API token, for containers      |
-| `-no-auth`  | —                | off                         | Disable the check (prints a warning) |
-| `-verbose`  | —                | off                         | Log every request                    |
-| `-version`  | —                | —                           | Print the version and exit           |
+| Flag          | Env              | Default               | Meaning                                    |
+| ------------- | ---------------- | --------------------- | ------------------------------------------ |
+| `-addr`       | `REQBOX_ADDR`   | `127.0.0.1:5178`      | Listen address (loopback only)             |
+| `-db`         | `REQBOX_DB`     | `./data/reqbox.db`    | SQLite file (created if missing)           |
+| `-static`     | `REQBOX_STATIC` | —                     | Serve the UI from a directory              |
+| `-token`      | `REQBOX_TOKEN`  | generated             | Fixed API token, for containers            |
+| `-no-auth`    | —                | off                   | Disable the check (prints a warning)       |
+| `-verbose`    | —                | off                   | Log every request                          |
+| `-no-browser` | —                | off                   | Do not open a browser at startup           |
+| `-version`    | —                | —                     | Print the version and exit                 |
+
+## Configuration file
+
+Flags are fine in a terminal but useless when someone double-clicks the binary.
+For that case, put `reqbox.yaml` next to the executable — see
+[`reqbox.example.yaml`](reqbox.example.yaml) for a commented starting point.
+
+```yaml
+server:
+  port: 5178        # or `addr: 127.0.0.1:5178`
+  autoPort: true    # move to the next free port when this one is taken
+  openBrowser: true
+storage:
+  db: data/reqbox.db
+auth:
+  enabled: true
+logging:
+  verbose: false
+```
+
+Precedence, highest first: **command-line flag > environment variable >
+`reqbox.yaml` > built-in default**. An existing deployment that passes flags
+keeps working untouched after the file appears. Unknown keys are an error rather
+than being ignored, so a typo like `auto_port` fails loudly instead of silently
+doing nothing.
 
 The database path defaults to `data/reqbox.db` next to the binary when that
 directory is writable; otherwise it falls back to the OS config directory. The
