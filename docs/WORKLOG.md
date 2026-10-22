@@ -116,6 +116,94 @@ Windows 之外的机器上一条都不会执行——而那正是保护明文凭
 
 ---
 
+## 2026-10-22 · 兼容分支的 CI/CD 与 2008 R2 发布
+
+**起点**：`legacy/win2008r2` @ `20118de`，只有构建脚本，没有 CI、没有发布
+产物，兼容性校验只看 PE 头。
+**终点**：该分支 `8c21014`，`v0.1.1-win2008r2` 已发布；`main` @ `d51ba89`
+之后又更新了指向 legacy 的文档。
+
+### 1. 发现校验是空的
+
+原 `build-legacy.ps1` 检查 PE 头最低系统版本是不是 6.x，注释断言
+「Go 1.27+ 会写成 10.0」。**实测：Go 1.24 构建的二进制 PE 头仍然是 6.1。**
+
+原因是 `ProcessPrng` 通过 `LoadLibrary` + `GetProcAddress` 在运行时解析，
+导入表里没有这个函数名。于是 PE 头与导入表都「看起来合法」，进程在
+2008 R2 上照样秒退且没有任何输出——正是这个脚本声称要拦的情况。
+
+实测对比（`debug/pe` 读取 + 全文搜索）：
+
+| 二进制 | PE minOS | 含 `ProcessPrng` |
+| ------ | -------- | ---------------- |
+| main（Go 1.24） | 6.1 | 是 |
+| legacy（Go 1.20） | 6.1 | 否 |
+
+两者 PE 头相同，区别只在字符串与导入表。
+
+### 2. `scripts/legacyguard`
+
+三项独立检查：PE 头为 6.x；全文不含 `ProcessPrng` / `bcryptprimitives`；
+静态导入的 DLL 在 NT 6.1 白名单内。第三条用白名单而非黑名单——出现新导入
+时必须先确认目标系统有该 DLL。
+
+3 个单元测试覆盖两个方向：拒绝含 `ProcessPrng` 的输入、放行干净的导入表。
+只测放行等于没测。
+
+两个构建脚本改为调用它，CI 与发版流程各跑一次；发版流程还会**先解包**
+再对解出的 exe 跑一次，确认打包没错。
+
+### 3. legacy 分支的 CI 与发版
+
+| 文件 | 触发 | 结果 |
+| ---- | ---- | ---- |
+| `legacy-ci.yml` | 推送到该分支、PR | [#1](https://github.com/iamartinlong/Reqbox/actions/runs/39713506157)、[#2](https://github.com/iamartinlong/Reqbox/actions/runs/39714627207) 全绿 |
+| `legacy-release.yml` | `v*-win2008r2` | [#1](https://github.com/iamartinlong/Reqbox/actions/runs/39714240061) 全绿，2 分 40 秒 |
+
+几处选择：
+
+- **工具链写死 `1.20.14`**，不读 `go.mod`。这个分支的兼容性是工具链的
+  属性，不是偏好；顺手加一步 `go version` 断言，防止 runner 镜像变化。
+- **跑在 `windows-latest`**。目标平台就是 Windows，在 Windows 上冒烟比在
+  Linux 上交叉编译更能说明问题。
+- **`-race` 不在此分支**：需要 cgo，且与 6.1 兼容性无关；主分支已覆盖。
+- **tag 带 `-win2008r2` 后缀**：与主分支 `v0.2.0` 区分，也把约束写进版本号。
+  发版工作流只认这个后缀，不会误触发主分支发布。
+
+### 4. 发布 v0.1.1-win2008r2
+
+| 检查 | 结果 |
+| ---- | ---- |
+| 发布前 Legacy CI #1 | 全绿 |
+| Release #1 | 全绿 |
+| 下载 zip 重算 SHA-256 | `38aa1968…f09cdf`，与 `checksums.txt` 一致 |
+| `legacyguard` 查解出的 exe | OK（PE 6.1、无 `ProcessPrng`、仅 `kernel32.dll`） |
+| `-version` | `reqbox 0.1.1` |
+| 带 token 启动 | 打印登录链接；`/api/health` 返回 `0.1.1`；`/` 含 `<div id="root">` |
+| 数据库 | `reqbox.db` / `-wal` / `-shm` 正常创建 |
+
+### 5. 踩到的坑
+
+- **legacy 分支缺 `LICENSE`**：`Copy-Item LICENSE` 直接失败，打包中断。
+  补上了文件，README 也加了 License 小节。
+- **`$args` 是 PowerShell 自动变量**：发版工作流里 `$args = @(...)` 再
+  `gh @args` 会静默出错。改名为 `$ghArgs`。
+- **`workflow_dispatch` 时 `ref_name` 是分支名**：`legacy/win2008r2` 带斜杠，
+  塞进 zip 文件名会出错。手动触发时改用 `0.0.0-snapshot-<run_number>`。
+- **主分支文档一度落后**：上一轮只更新了 legacy 分支的文档，`main` 的
+  `HANDOFF.md` / `TODO.md` / `LEGACY-WINDOWS.md` 里还写着「legacy 没有 CI」
+  「最新版本只有 v0.2.0」。本轮补齐。
+
+### 遗留
+
+| 项 | 说明 |
+| ---- | ---- |
+| **2008 R2 SP1 实机验证** | 唯一没打勾的关键项。步骤在 legacy 分支 `docs/TODO.md` 的 P1 |
+| 两个分支各改一次 | 工作流与 `legacyguard` 只存在于 legacy，主分支没有对应物；这是刻意的（主分支不需要） |
+| legacy 分支无前端测试 | 只构建不测试；主分支的 Vitest 不会带过去（会把新依赖带进 Go 1.20 约束） |
+
+---
+
 ## 模板
 
 新增记录时复制这段：

@@ -23,13 +23,13 @@
 | 项 | 值 |
 | -- | -- |
 | 仓库 | <https://github.com/iamartinlong/Reqbox> |
-| `main` | `a2c52fb` — 当前开发主线，Go 1.24.1 |
-| `legacy/win2008r2` | `20118de` — Windows Server 2012 R2，Go 1.20 |
-| 最新版本 | `v0.2.0`（2026-10-21），[Release](https://github.com/iamartinlong/Reqbox/releases/tag/v0.2.0) |
+| `main` | `d51ba89` — 当前开发主线，Go 1.24.1 |
+| `legacy/win2008r2` | `8c21014` — Windows Server 2008 R2 及更早，Go 1.20.14 |
+| 最新版本 | `v0.2.0`（主分支）、`v0.1.1-win2008r2`（兼容包） |
 | 许可证 | MIT |
 
-**仓库是重新初始化的**，只有这两个分支；`main` 从最初的 2 个提交增长到
-7 个。旧仓库（Gitea / `SuperGet`）的历史已废弃，不迁移。
+**仓库是重新初始化的**，只有这两个分支。旧仓库（Gitea / `SuperGet`）的历史
+已废弃，不迁移。
 
 ### 两个分支的关系
 
@@ -39,6 +39,19 @@
   （Go 1.20 没有 slog）
 - legacy 的依赖版本被钉在能编译 Go 1.20 的版本上
 - 两者**不能直接合并**。改动若同时影响两边，需要手工各改一次
+- 两边都有完整的 CI 与发版流程，但工作流文件各自维护
+
+两个分支的基本情况对比：
+
+| 项 | `main` | `legacy/win2008r2` |
+| -- | ------ | ------------------ |
+| Go | 1.24.1 | **1.20.14**（硬要求） |
+| 目标系统 | Windows 10 / Server 2016+ | **Server 2008 R2 SP1 (NT 6.1)** 及更早 |
+| 发版 tag | `v0.2.0` | `v0.1.1-win2008r2` |
+| 产物 | 六平台压缩包 | 仅 `windows/amd64` 兼容包 |
+| 兼容性守卫 | 无（不需要） | `scripts/legacyguard` |
+| 前端测试 | 112 个（Vitest） | 无（只构建） |
+| 交接文档 | 本文件 | 该分支的 `docs/HANDOFF.md` |
 
 只有需要在 Windows Server 2016 之前的系统上运行时，才用 legacy 分支。
 
@@ -145,17 +158,22 @@ git tag v0.3.0 && git push origin v0.3.0
 ### 2. legacy 分支不能用新版 Go 构建
 
 必须用真实的 Go 1.20 工具链。用 Go 1.24 编译**能通过**，但产物在
-Windows Server 2012 R2 上会立即退出——这是最难排查的一类失败。
+Windows Server 2008 R2 与 2012 R2 上会立即退出——这是最难排查的一类失败。
 
 ```bash
 # 让 Go 自动下载并使用 1.20
 GOTOOLCHAIN=go1.20.14 go build ./cmd/reqbox
 
-# 或用脚本（会自动找 1.20 工具链）。此脚本只存在于 legacy 分支，
-# 在 main 上是找不到的，必须先切换分支。
+# 或用脚本（它会拒绝非 1.20 的工具链，并在构建后跑 legacyguard）。
+# 此脚本只存在于 legacy 分支，必须先切换分支。
 git checkout legacy/win2008r2
 ./scripts/build-legacy.ps1
 ```
+
+**注意**：只检查 PE 头不够。Go 1.24 的二进制 PE 头仍写着 6.1，`ProcessPrng`
+是运行时解析的，导入表里也看不到。所以 legacy 分支用 `scripts/legacyguard`
+做三项检查（PE 头、全文禁用符号、导入 DLL 白名单），详见该分支的
+`docs/LEGACY-WINDOWS.md`。
 
 ### 3. 不要在这个分支上跑 `go mod tidy`
 
@@ -168,6 +186,8 @@ git checkout legacy/win2008r2
 # 此脚本只存在于 legacy 分支（在 main 上不存在）
 ./scripts/check-legacy-pins.ps1     # 5 项 pin 必须全部 OK
 ```
+
+这条在 legacy 分支的 CI 里已经自动执行，手工只在本地改依赖后需要。
 
 ### 4. 凭据以明文存于数据库
 
@@ -280,10 +300,17 @@ git checkout legacy/win2008r2
 GOTOOLCHAIN=go1.20.14 go build ./cmd/reqbox
 ```
 
+或者直接下载兼容包，不必构建：
+
+<https://github.com/iamartinlong/Reqbox/releases/tag/v0.1.1-win2008r2>
+
 ---
 
 ## 十一、需要联系原维护者确认的事
 
-- 生产环境（Windows Server 2012 R2）上现存的数据库是否要迁移
+- 生产环境（Windows Server 2012 R2 / 2008 R2）上现存的数据库是否要迁移
+- **Windows Server 2008 R2 SP1 的实机验证**：`v0.1.1-win2008r2` 已发布，
+  构建侧证据齐备，但还没在真机上启动过。验证步骤在 legacy 分支的
+  `docs/TODO.md` 的 P1
 - 是否需要保留旧 Gitea 仓库作为归档
 - 客户接口的原始来源（不在本仓库内）
