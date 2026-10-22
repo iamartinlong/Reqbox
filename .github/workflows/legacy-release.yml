@@ -93,7 +93,8 @@ jobs:
 
       # Archives are built here rather than by GoReleaser: GoReleaser would try
       # to cross-compile for every platform, and this branch ships exactly one
-      # artifact. The release body is taken from docs/release-notes when present.
+      # artifact. The release body is taken from docs/history/release-notes
+      # when present.
       - name: Assemble release assets
         shell: pwsh
         run: |
@@ -132,8 +133,8 @@ jobs:
         id: notes
         shell: bash
         run: |
-          if [ -f "docs/release-notes/${GITHUB_REF_NAME}.md" ]; then
-            echo "file=docs/release-notes/${GITHUB_REF_NAME}.md" >> "$GITHUB_OUTPUT"
+          if [ -f "docs/history/release-notes/${GITHUB_REF_NAME}.md" ]; then
+            echo "file=docs/history/release-notes/${GITHUB_REF_NAME}.md" >> "$GITHUB_OUTPUT"
           else
             echo "file=" >> "$GITHUB_OUTPUT"
           fi

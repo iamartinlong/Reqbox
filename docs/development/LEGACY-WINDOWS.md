@@ -205,7 +205,7 @@ git push origin v0.1.1-win2008r2
 tag 后缀 `-win2008r2` 是刻意加的：它让这个产物在主分支的 `v0.2.0` 旁边一眼
 可辨，也把「只能跑在旧系统上」这件事写进了版本号。
 
-发布说明优先取 `docs/release-notes/<tag>.md`，缺省用本文档。归档文件名
+发布说明优先取 `docs/history/release-notes/<tag>.md`，缺省用本文档。归档文件名
 `reqbox_<版本>_windows_amd64_legacy.zip` 与主分支的命名同构，所以校验命令
 是一样的。
 

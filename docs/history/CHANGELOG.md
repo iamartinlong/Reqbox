@@ -60,7 +60,7 @@
   **仍未验证**：2008 R2 SP1 实机启动。这是本次发布要解决的事，不是已经
   解决的事。
 
-下一版本的内容见 [TODO.md](./TODO.md)。
+下一版本的内容见 [TODO.md](../planning/TODO.md)。
 
 ---
 
@@ -98,7 +98,7 @@
 
 ### 安全修复（审计阶段）
 
-详见 [DECISIONS.md](./DECISIONS.md) 的 DR-003、DR-004。
+详见 [DECISIONS.md](../design/DECISIONS.md) 的 DR-003、DR-004。
 
 | 问题 | 影响 |
 | ---- | ---- |

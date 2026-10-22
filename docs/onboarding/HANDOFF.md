@@ -1,7 +1,7 @@
 # 交接说明（兼容分支）
 
 面向接手 `legacy/win2008r2` 的人。主分支的交接文档在 `main` 的
-`docs/HANDOFF.md`，这里只写**这个分支特有**的部分。
+`docs/onboarding/HANDOFF.md`，这里只写**这个分支特有**的部分。
 
 **最后更新**：2026-10-22
 
@@ -89,8 +89,8 @@ go run ./scripts/legacyguard -exe dist/reqbox-win-legacy-amd64.exe
 构建侧证据齐备（1.20.14、PE 6.1、无 `ProcessPrng`、仅导入 `kernel32.dll`），
 **但没有在真实 2008 R2 上启动过**。2012 R2 已于 2026-10-20 实测通过。
 
-验证步骤见 [TODO.md](./TODO.md) 的 P1。验证通过后记得改两处状态表：
-`docs/TODO.md` 与 `docs/LEGACY-WINDOWS.md`。
+验证步骤见 [TODO.md](../planning/TODO.md) 的 P1。验证通过后记得改两处状态表：
+`docs/planning/TODO.md` 与 `docs/development/LEGACY-WINDOWS.md`。
 
 ---
 
@@ -121,7 +121,7 @@ git tag v0.1.1-win2008r2
 git push origin v0.1.1-win2008r2
 ```
 
-CI 与发版的细节见 [LEGACY-WINDOWS.md](./LEGACY-WINDOWS.md) 的「CI 与发版」。
+CI 与发版的细节见 [LEGACY-WINDOWS.md](../development/LEGACY-WINDOWS.md) 的「CI 与发版」。
 
 ---
 
@@ -146,7 +146,7 @@ CI 与发版的细节见 [LEGACY-WINDOWS.md](./LEGACY-WINDOWS.md) 的「CI 与�
 
 本分支从主分支分出来时没带 `LICENSE`，打包脚本 `Copy-Item LICENSE` 直接失败。
 已补上（`2026-10-22`）。若再次出现「打包失败但看不出原因」，先确认这三个
-文件都在：`LICENSE`、`README.md`、`docs/LEGACY-WINDOWS.md`。
+文件都在：`LICENSE`、`README.md`、`docs/development/LEGACY-WINDOWS.md`。
 
 ### `$args` 是 PowerShell 的自动变量
 

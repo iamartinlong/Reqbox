@@ -4,7 +4,7 @@
 
 图例：`[ ]` 未开始 · `[~]` 进行中 · `[x]` 已完成
 
-> 主分支的待办在仓库的 `main` 上（`docs/TODO.md`），不在这里。本文件只
+> 主分支的待办在仓库的 `main` 上（`docs/planning/TODO.md`），不在这里。本文件只
 > 记录**这个分支独有**的工作：兼容性、工具链与旧系统验证。
 
 ---
@@ -59,7 +59,7 @@
 
 **已做**：新增 `scripts/legacyguard`（PE 头 + 全文禁用符号 + 导入 DLL 白名单），
 带 3 个单元测试；两个构建脚本、`legacy-ci.yml`、`legacy-release.yml` 都接上。
-详见 [LEGACY-WINDOWS.md](./LEGACY-WINDOWS.md)。
+详见 [LEGACY-WINDOWS.md](../development/LEGACY-WINDOWS.md)。
 
 ### [ ] race detector 验证
 
