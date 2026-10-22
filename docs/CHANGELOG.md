@@ -92,4 +92,20 @@
 - 补上 `LICENSE`（此前本分支缺该文件，打包会失败）。README 增加了 License
   小节。
 
+- **发布 `v0.1.1-win2008r2`**（2026-10-22）。首个带 CI 与自动化发布的兼容包。
+
+  | 项 | 值 |
+  | -- | -- |
+  | 资产 | `reqbox_0.1.1_windows_amd64_legacy.zip`（4.85 MB）+ `checksums.txt` |
+  | 内容 | `reqbox.exe`、`LICENSE`、`README.md`、`LEGACY-WINDOWS.md` |
+  | 版本 | `reqbox 0.1.1` |
+  | 工具链 | Go 1.20.14 |
+
+  发布后用 Release 的下载链接复核过：SHA-256 与 `checksums.txt` 一致，
+  `legacyguard` 放行（PE 6.1、无 `ProcessPrng`、仅导入 `kernel32.dll`），
+  启动后 `/api/health` 与内嵌前端正常。
+
+  **仍未验证**：2008 R2 SP1 实机启动。这是本次发布要解决的事，不是已经
+  解决的事。
+
 下一版本的内容见 [TODO.md](./TODO.md)。当前唯一待决策项是项目改名。

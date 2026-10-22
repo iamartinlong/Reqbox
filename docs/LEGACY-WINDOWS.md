@@ -174,11 +174,16 @@ go run ./scripts/legacyguard -exe dist/reqbox-win-legacy-amd64.exe
 | Go 1.20 下 `go test ./...` | ✅ 61 个测试全绿 |
 | 本机（Win10）启动、健康检查、嵌入前端 | ✅ |
 | **Windows Server 2012 R2 实机运行** | ✅ **2026-10-20 确认** |
-| **Windows Server 2008 R2 实机运行** | ❌ **待验证（本轮发布的目的）** |
+| **Windows Server 2008 R2 实机运行** | ❌ **待验证（`v0.1.1-win2008r2` 即为此发布）** |
 
 > 2008 R2 的验证状态是这份文档里唯一还没打勾的关键项。构建侧的证据
 > （工具链 1.20.14、PE 6.1、无 `ProcessPrng`、导入表只有 `kernel32.dll`）
 > 都指向可用，但「没在真机上跑过」就是没跑过，不应写成已验证。
+>
+> 本次发布的产物已从 GitHub Release 下载回来复核：SHA-256 与
+> `checksums.txt` 一致，`legacyguard` 放行，`-version` 输出 `0.1.1`，
+> 带 token 启动后 `/api/health` 与内嵌前端均正常，数据库与 `-wal` / `-shm`
+> 正常创建。这只证明「包是好的」，不证明「2008 R2 能跑」。
 
 ## CI 与发版
 
