@@ -28,7 +28,7 @@ Go 1.21 起，构建产物在**启动时**调用 `bcryptprimitives.dll` 的
 | 分支 | `legacy/win2008r2` |
 | 工具链 | **Go 1.20.14**（硬要求，见下） |
 | 目标系统 | Windows Server 2008 R2 SP1（NT 6.1）及更新 |
-| 最新版本 | `v0.1.1-win2008r2` |
+| 最新版本 | `v0.1.2-win2008r2` |
 | 产物 | `reqbox_<版本>_windows_amd64_legacy.zip` |
 
 **tag 命名带 `-win2008r2` 后缀**：它在 `main` 的 `v0.2.0` 旁边一眼可辨，
@@ -117,8 +117,8 @@ go test ./...
 发版：
 
 ```bash
-git tag v0.1.1-win2008r2
-git push origin v0.1.1-win2008r2
+git tag v0.1.2-win2008r2
+git push origin v0.1.2-win2008r2
 ```
 
 CI 与发版的细节见 [LEGACY-WINDOWS.md](../development/LEGACY-WINDOWS.md) 的「CI 与发版」。
