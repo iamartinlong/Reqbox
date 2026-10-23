@@ -280,6 +280,94 @@ Windows 之外的机器上一条都不会执行——而那正是保护明文凭
 
 ---
 
+## 2026-10-23 · 文档分组与老库迁移验证
+
+**起点**：`main` @ `51f13d1`，`docs/` 下 10 个文件平铺。
+**终点**：`main` @ `7062f8a`，文档分五组；老库迁移有了回归测试。
+
+### 1. 文档按「读者想干什么」分组
+
+原来的索引是按文件名排的列表，想知道「下一步做什么」的人和想知道「当初
+为什么这么设计」的人在同一个表里翻。改为五组：
+
+| 组 | 内容 | 读者 |
+| -- | ---- | ---- |
+| `onboarding/` | HANDOFF | 今天刚加入 |
+| `planning/` | TODO、PLAN | 要决定做什么 |
+| `design/` | DECISIONS、AUDIT | 想推翻某个决定 |
+| `development/` | DEVELOPMENT、LEGACY-WINDOWS | 要改代码、要发版 |
+| `history/` | CHANGELOG、WORKLOG、release-notes | 想知道最近改了什么 |
+
+索引开头换成「你的情况 → 从这篇开始」的路由表，并补了一段三类历史文档的
+分工（用端口可配置这个真实改动举例：CHANGELOG 写行为、WORKLOG 写为什么、
+release-notes 写用户需要知道什么）。
+
+**两处 docs 之外的连带修改**，不改就是静默失效：
+
+1. `.github/workflows/release.yml` 读 `docs/release-notes/<tag>.md`。路径
+   不改，发版时会找不到文件、退回自动 changelog，**而且不报错**——这正是
+   v0.2.0 踩过的坑。
+2. 根目录 `README.md` 的 Layout 块与两处路径引用。
+
+链接用脚本批量重写，然后写了个检查器验证：所有相对链接与锚点都能解析
+（包括 `<a id="p1">` 这种 HTML 锚点，标题推导的锚点规则覆盖不到它）。
+
+legacy 分支同步了同样的五组结构，但**不维护 PLAN、AUDIT、WORKLOG**：那三份
+记录的是规划过程和一轮轮改动的来龙去脉，与工具链版本无关，`main` 上一份就够，
+重复维护只会产生两个不一致的副本。这个理由写进了它的 `docs/README.md`。
+
+### 2. 老库（apimock 时代）迁移验证
+
+用户问「用 0.2.0 打开旧库会不会有问题」。读代码得出的结论不算数，因为
+`migration 1` 是 `CREATE TABLE IF NOT EXISTS`——从当前 schema 出发的推理
+永远发现不了历史差异。
+
+做法：从仓库里找出旧版提交 `2516756`（那时还叫 `apimock`，module 名也是），
+`git archive` 出来**真实构建了一个旧版二进制**，用它创建库并写入数据，再用
+0.2.0 打开。
+
+| 阶段 | user_version | history 列 | 数据 |
+| ---- | ------------ | ---------- | ---- |
+| 旧库 | 1 | 无 `timing` | 2 请求 / 1 历史 / 0 settings |
+| 0.2.0 打开后 | 2 | 有 `timing` | 2 请求 / 1 历史 / 1 settings（token 哈希） |
+
+逐项核对：请求的 params、headers、bearer token、JSON body、`exposeSlug`
+全部保留；集合与环境完整；历史记录含失败请求的错误信息；已发布的 mock 仍能
+按 slug 命中。
+
+**还验证了降级方向**：把迁移后的库用旧版 apimock 再打开，能读请求、能读
+历史、还能写新历史。原因是旧版用显式列名（`SELECT id, name, ...`）而非
+`SELECT *`，多出的 `timing` 列不影响它。
+
+**一个差点误判的地方**：`/mock/users` 返回 404，一度以为迁移丢了数据。查下来
+404 是**目标站点** example.com 返回的——mock 转发本身正常，只是测试数据指向了
+不存在的路径。顺带发现 `handleMock` 把所有错误都映射成 404，掩盖了真实原因；
+这是既有行为，没有改。
+
+**新增两个回归测试**：
+
+| 测试 | 覆盖 |
+| ---- | ---- |
+| `TestMigrateFromLegacyV1Database` | 在测试里构造 v1 真实 schema，用新代码打开，验证加列、数据保留、mock 可访问 |
+| `TestMigrateIsIdempotent` | 同一库反复打开三次，确保 `ALTER TABLE` 重复执行不会失败 |
+
+做了变异测试确认有效：把 `ALTER TABLE` 换成 `SELECT 1`，第一个测试立刻失败
+并指出 `timing` 列缺失。
+
+### 3. 一个失误
+
+做 `actionlint` 校验时工作目录用错，在 `main` 的 `.github/workflows/` 下创建
+了一个空的 `legacy-release.yml`。发现后删除，没有进入任何提交。
+
+### 遗留
+
+| 项 | 说明 |
+| ---- | ---- |
+| 2008 R2 复验三项修复 | `v0.1.2-win2008r2` 已发布，需在真机确认「保存请求」这一步 |
+| `handleMock` 吞掉错误原因 | 任何错误都返回 404，排查时容易误判；是否细化可另议 |
+
+---
+
 ## 模板
 
 新增记录时复制这段：

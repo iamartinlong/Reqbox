@@ -23,9 +23,9 @@
 | 项 | 值 |
 | -- | -- |
 | 仓库 | <https://github.com/iamartinlong/Reqbox> |
-| `main` | `d51ba89` — 当前开发主线，Go 1.24.1 |
-| `legacy/win2008r2` | `8c21014` — Windows Server 2008 R2 及更早，Go 1.20.14 |
-| 最新版本 | `v0.2.0`（主分支）、`v0.1.1-win2008r2`（兼容包） |
+| `main` | `7062f8a` — 当前开发主线，Go 1.24.1 |
+| `legacy/win2008r2` | `fea1521` — Windows Server 2008 R2 及更早，Go 1.20.14 |
+| 最新版本 | `v0.2.0`（主分支）、`v0.1.2-win2008r2`（兼容包） |
 | 许可证 | MIT |
 
 **仓库是重新初始化的**，只有这两个分支。旧仓库（Gitea / `SuperGet`）的历史
@@ -47,7 +47,7 @@
 | -- | ------ | ------------------ |
 | Go | 1.24.1 | **1.20.14**（硬要求） |
 | 目标系统 | Windows 10 / Server 2016+ | **Server 2008 R2 SP1 (NT 6.1)** 及更早 |
-| 发版 tag | `v0.2.0` | `v0.1.1-win2008r2` |
+| 发版 tag | `v0.2.0` | `v0.1.2-win2008r2` |
 | 产物 | 六平台压缩包 | 仅 `windows/amd64` 兼容包 |
 | 兼容性守卫 | 无（不需要） | `scripts/legacyguard` |
 | 前端测试 | 112 个（Vitest） | 无（只构建） |
@@ -215,7 +215,7 @@ shadcn/ui 的 `data-active` / `data-horizontal` 变体**不是内置的**。
 
 | 项 | 状态 |
 | -- | ---- |
-| Go 测试 | 78 通过 |
+| Go 测试 | 96 通过（主分支） |
 | 前端测试 | 112 通过 |
 | CI | `.github/workflows/ci.yml`：Linux + Windows 的 Go 测试（Linux 带 `-race`）、前端测试、二进制冒烟。最近一次 `main` 全绿 |
 | CD | `.github/workflows/release.yml` + `.goreleaser.yaml`：推 `v*` tag 自动发布六平台产物 |
@@ -302,15 +302,17 @@ GOTOOLCHAIN=go1.20.14 go build ./cmd/reqbox
 
 或者直接下载兼容包，不必构建：
 
-<https://github.com/iamartinlong/Reqbox/releases/tag/v0.1.1-win2008r2>
+<https://github.com/iamartinlong/Reqbox/releases/tag/v0.1.2-win2008r2>
 
 ---
 
 ## 十一、需要联系原维护者确认的事
 
 - 生产环境（Windows Server 2012 R2 / 2008 R2）上现存的数据库是否要迁移
-- **Windows Server 2008 R2 SP1 的实机验证**：`v0.1.1-win2008r2` 已发布，
-  构建侧证据齐备，但还没在真机上启动过。验证步骤在 legacy 分支的
+- **2008 R2 上的三项修复尚未复验**：`v0.1.1-win2008r2` 已确认能在 2008 R2
+  启动，但那次实测暴露的三个问题（控制台复制不出 token、界面能开却无法登录、
+  端口冲突起不来）修完后只在本机验证过。新包 `v0.1.2-win2008r2` 需要在那台
+  机器上再跑一次，重点是**保存请求**这一步。步骤见 legacy 分支的
   `docs/planning/TODO.md` 的 P1
 - 是否需要保留旧 Gitea 仓库作为归档
 - 客户接口的原始来源（不在本仓库内）
