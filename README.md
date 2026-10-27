@@ -64,7 +64,7 @@ the archive for your platform and run the binary — nothing else is needed, the
 web client is embedded:
 
 ```bash
-tar -xzf reqbox_0.2.0_linux_amd64.tar.gz     # or expand the .zip on Windows
+tar -xzf reqbox_0.3.0_linux_amd64.tar.gz     # or expand the .zip on Windows
 ./reqbox
 ```
 
@@ -290,7 +290,7 @@ The response carries the status, headers, body, timing, the resolved URL, and a
 ## Tests
 
 ```bash
-go test ./...          # backend: 78 tests
+go test ./...          # backend: 96 tests
 cd web && pnpm test    # frontend: 112 tests
 ```
 
@@ -299,7 +299,7 @@ Both run on every push to `main` and every pull request via
 detector on Linux, plus a build that boots the real binary and checks the
 embedded UI is present.
 
-Releases are cut by tagging: `git tag v0.2.0 && git push origin v0.2.0` runs
+Releases are cut by tagging: `git tag v0.3.0 && git push origin v0.3.0` runs
 `.github/workflows/release.yml`, which builds the web client, runs the tests
 again, and hands the binaries to GoReleaser (config in `.goreleaser.yaml`).
 

@@ -20,7 +20,7 @@
 | 前端代码 | 35 文件 / 约 4547 行 |
 | Go 测试 | 78 个（主分支）+ 61 个（兼容分支），全绿 |
 | 前端测试 | 112 个，全绿 |
-| CI / CD | 两个分支各自一套；`v0.2.0` 与 `v0.1.1-win2008r2` 均已发布 |
+| CI / CD | 两个分支各自一套；`v0.3.0` 与 `v0.1.2-win2008r2` 均已发布 |
 | 已知未决 | 2008 R2 SP1 实机验证（兼容分支） |
 
 不想构建的话，直接从 [Releases](https://github.com/iamartinlong/Reqbox/releases)
@@ -82,7 +82,7 @@
 代码不再只在本机验证：`.github/workflows/ci.yml` 覆盖 Linux + Windows 的
 Go 测试（Linux 带 `-race`）、前端测试与二进制冒烟；`.github/workflows/release.yml`
 配合 `.goreleaser.yaml`，推送 `v*` tag 即产出六平台压缩包并创建 Release。
-`v0.2.0` 已按此流程发布。细节见 [DEVELOPMENT 的「发版」](../development/DEVELOPMENT.md)、
+`v0.3.0` 已按此流程发布。细节见 [DEVELOPMENT 的「发版」](../development/DEVELOPMENT.md)、
 CHANGELOG 与 [WORKLOG](../history/WORKLOG.md)。
 
 ---
@@ -410,8 +410,8 @@ DPAPI 的信任边界、以及实现时必须一并处理的四点，记录在
 | M2 有回归保护 | M1 + 阶段二 | 2 ～ 2.5 天 | ✅ |
 | M3 面向非英语用户 | M2 + 阶段三 | 3 ～ 4 天 | ✅ |
 | M4 排障能力完整 | M3 + 阶段四 | 3.5 ～ 5 天 | ✅ |
-| M5 可持续交付 | M4 + 阶段五 + 1.4 | 5 ～ 6 天 | ✅（`v0.2.0`） |
-| M6 旧系统可交付 | 兼容分支 CI/CD + `v0.1.1-win2008r2` | +0.5 天 | ✅（2008 R2 实机验证待补） |
+| M5 可持续交付 | M4 + 阶段五 + 1.4 | 5 ～ 6 天 | ✅（`v0.3.0`） |
+| M6 旧系统可交付 | 兼容分支 CI/CD + `v0.1.2-win2008r2` | +0.5 天 | ✅（2008 R2 三项修复待复验） |
 
 M2 是关键节点：从它开始，后续每一步都有自动化兜底。M5 之后，验证与发版
 都不再依赖某一台开发机；M6 把这一点扩展到了旧系统。

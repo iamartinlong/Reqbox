@@ -60,8 +60,8 @@ go build -ldflags "-s -w -X reqbox/internal/server.Version=0.1.0" -o reqbox ./cm
 生成六平台压缩包与校验和并创建 GitHub Release。
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 | 事项 | 说明 |
@@ -75,7 +75,7 @@ git push origin v0.2.0
 | 发布说明 | 若存在 `docs/history/release-notes/<tag>.md` 就用它覆盖自动生成的提交列表，否则用 changelog |
 
 **发布说明优先手写。** 自动生成的列表只有 commit 标题，说明不了行为变化。
-按 tag 建文件（如 `docs/history/release-notes/v0.2.0.md`），写清亮点、安装方式和
+按 tag 建文件（如 `docs/history/release-notes/v0.3.0.md`），写清亮点、安装方式和
 已知限制；没有对应文件的版本自动退回 changelog，不会因此失败。
 
 **先演练再发。** `Release` 工作流也支持手动触发（Actions 页面 → Run
