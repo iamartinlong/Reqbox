@@ -36,8 +36,8 @@
 | 项 | 值 |
 | -- | -- |
 | 仓库 | <https://github.com/iamartinlong/Reqbox> |
-| `main` | `a83df90` — 当前开发主线，Go 1.24.1 |
-| `legacy/win2008r2` | `dba69f1` — Windows Server 2008 R2 及更早，Go 1.20.14 |
+| `main` | `e4ffbd8` — 当前开发主线，Go 1.24.1 |
+| `legacy/win2008r2` | `5db5318` — Windows Server 2008 R2 及更早，Go 1.20.14 |
 | 最新发布 | `v0.3.0`（主分支）、`v0.1.2-win2008r2`（兼容包） |
 | 许可证 | MIT |
 
@@ -407,15 +407,18 @@ GOTOOLCHAIN=go1.20.14 go build ./cmd/reqbox
 移交时已确认：
 
 - [x] 两个分支工作区干净，与远端一致
-- [x] `main` @ `a83df90`（`v0.3.0` 的提交），`legacy/win2008r2` @ `62a01db`
-- [x] CI 全绿（`main` CI #13、Legacy CI #7）
+- [x] `main` @ `e4ffbd8`，`legacy/win2008r2` @ `5db5318`
+- [x] CI 全绿（`main` CI #15、Legacy CI #8）
 - [x] 四个 tag 已推送：`v0.3.0`、`v0.2.0`、`v0.1.1-win2008r2`、`v0.1.2-win2008r2`
 - [x] `v0.3.0` 产物已下载核验：校验和一致、`-version` 正确、三项新功能实测生效
+- [x] **2008 R2 三项修复已复验通过**（2026-10-27）
 - [x] `go test ./...` 96 个通过（main）/ 80 个（legacy）
 - [x] `pnpm test` 112 个通过，`tsc -b` 与 `oxlint` 干净
 - [x] 文档已按读者目的分组，相对链接与锚点全部有效
 - [x] 工作日志记录了每一轮的取舍与踩坑
 - [x] 无未提交改动、无临时测试文件残留
+
+**没有遗留的验证项，也没有进行中的工作。**
 
 **本地遗留物**（都不在 git 里，可安全删除）：
 
