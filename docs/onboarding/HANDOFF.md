@@ -36,10 +36,14 @@
 | 项 | 值 |
 | -- | -- |
 | 仓库 | <https://github.com/iamartinlong/Reqbox> |
-| `main` | `e4ffbd8` — 当前开发主线，Go 1.24.1 |
-| `legacy/win2008r2` | `5db5318` — Windows Server 2008 R2 及更早，Go 1.20.14 |
+| `main` | 当前开发主线，Go 1.24.1（最新见 `git log -1`） |
+| `legacy/win2008r2` | Windows Server 2008 R2 及更早，Go 1.20.14 |
 | 最新发布 | `v0.3.0`（主分支）、`v0.1.2-win2008r2`（兼容包） |
 | 许可证 | MIT |
+
+> 这里**不写提交号**。写进去的瞬间就会过期——本仓库已为此返工四次，规则见
+> [docs/README](../README.md) 的维护规则。要确认当前提交，用 `git log -1`；
+> 要确认代码是否等于发布，用 `git diff --stat v0.3.0..HEAD`。
 
 **仓库是重新初始化的**，只有这两个分支。旧仓库（Gitea / `SuperGet`）的历史
 已废弃，不迁移。
@@ -407,8 +411,8 @@ GOTOOLCHAIN=go1.20.14 go build ./cmd/reqbox
 移交时已确认：
 
 - [x] 两个分支工作区干净，与远端一致
-- [x] `main` @ `e4ffbd8`，`legacy/win2008r2` @ `5db5318`
-- [x] CI 全绿（`main` CI #15、Legacy CI #8）
+- [x] 代码与 `v0.3.0` 一致（`git diff --stat v0.3.0..HEAD` 只应显示文档改动）
+- [x] CI 全绿（最近一次 `main` 与 legacy 的推送都通过）
 - [x] 四个 tag 已推送：`v0.3.0`、`v0.2.0`、`v0.1.1-win2008r2`、`v0.1.2-win2008r2`
 - [x] `v0.3.0` 产物已下载核验：校验和一致、`-version` 正确、三项新功能实测生效
 - [x] **2008 R2 三项修复已复验通过**（2026-10-27）
@@ -419,6 +423,16 @@ GOTOOLCHAIN=go1.20.14 go build ./cmd/reqbox
 - [x] 无未提交改动、无临时测试文件残留
 
 **没有遗留的验证项，也没有进行中的工作。**
+
+复核这份清单的方法（不依赖任何人写的数字）：
+
+```bash
+git status --short              # 应为空
+git log -1 --oneline            # 当前提交
+git diff --stat v0.3.0..HEAD    # 只应有文档改动
+go test ./... && go vet ./...
+cd web && pnpm test && pnpm exec tsc -b
+```
 
 **本地遗留物**（都不在 git 里，可安全删除）：
 
