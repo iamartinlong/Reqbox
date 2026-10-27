@@ -36,7 +36,7 @@
 | 项 | 值 |
 | -- | -- |
 | 仓库 | <https://github.com/iamartinlong/Reqbox> |
-| `main` | `1e246de` — 当前开发主线，Go 1.24.1 |
+| `main` | `a83df90` — 当前开发主线，Go 1.24.1 |
 | `legacy/win2008r2` | `dba69f1` — Windows Server 2008 R2 及更早，Go 1.20.14 |
 | 最新发布 | `v0.3.0`（主分支）、`v0.1.2-win2008r2`（兼容包） |
 | 许可证 | MIT |
@@ -406,9 +406,10 @@ GOTOOLCHAIN=go1.20.14 go build ./cmd/reqbox
 移交时已确认：
 
 - [x] 两个分支工作区干净，与远端一致
-- [x] `main` @ `a45a85c`（发版后打 tag），`legacy/win2008r2` @ `62a01db`
-- [x] CI 全绿（`main` CI #12、Legacy CI #7）
+- [x] `main` @ `a83df90`（`v0.3.0` 的提交），`legacy/win2008r2` @ `62a01db`
+- [x] CI 全绿（`main` CI #13、Legacy CI #7）
 - [x] 四个 tag 已推送：`v0.3.0`、`v0.2.0`、`v0.1.1-win2008r2`、`v0.1.2-win2008r2`
+- [x] `v0.3.0` 产物已下载核验：校验和一致、`-version` 正确、三项新功能实测生效
 - [x] `go test ./...` 96 个通过（main）/ 80 个（legacy）
 - [x] `pnpm test` 112 个通过，`tsc -b` 与 `oxlint` 干净
 - [x] 文档已按读者目的分组，相对链接与锚点全部有效
