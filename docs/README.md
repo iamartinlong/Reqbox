@@ -10,6 +10,10 @@
 
 ## 先看这里
 
+> **接手前必读一条**：`main` 上已有三项功能（`reqbox.yaml` 配置文件、
+> 端口冲突顺延、启动自动开浏览器）**尚未发版**，最新发布 `v0.2.0` 里没有它们。
+> 建议第一件事是发 `v0.3.0`，见 [planning/TODO.md](./planning/TODO.md) 的 P1。
+
 | 你的情况 | 从这篇开始 |
 | -------- | ---------- |
 | 刚拿到这个仓库 | [onboarding/HANDOFF.md](./onboarding/HANDOFF.md) |
