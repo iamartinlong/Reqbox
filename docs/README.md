@@ -24,7 +24,7 @@
 docs/
   README.md            本文件
   onboarding/          接手本分支：五条不能违反的规则、坑
-  planning/            本分支独有的待办（实机验证、工具链约束）
+  planning/            本分支独有的待办（技术债、功能缺口）
   design/              决策记录
   development/         兼容性原理、构建、CI、发版
   history/             变更记录、每个版本的发布说明
@@ -35,7 +35,7 @@ docs/
 | 组 | 文档 | 内容 |
 | -- | ---- | ---- |
 | onboarding | [HANDOFF.md](./onboarding/HANDOFF.md) | 分支为什么存在、五条规则、常用命令、坑 |
-| planning | [TODO.md](./planning/TODO.md) | 2008 R2 实机复验、技术债、功能缺口 |
+| planning | [TODO.md](./planning/TODO.md) | 技术债、功能缺口；2008 R2 复验步骤（下次改动时用） |
 | design | [DECISIONS.md](./design/DECISIONS.md) | 决策记录 |
 | development | [LEGACY-WINDOWS.md](./development/LEGACY-WINDOWS.md) | 兼容性原理、`legacyguard`、构建、CI 与发版 |
 | development | [DEVELOPMENT.md](./development/DEVELOPMENT.md) | 本地开发与验证流程 |
